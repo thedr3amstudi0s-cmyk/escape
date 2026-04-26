@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESCAPE.EXE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  :root {
+    --g0: #000000;
+    --g1: #0a1a0a;
+    --g2: #0f2f0f;
+    --g3: #1a4a1a;
+    --g4: #226622;
+    --g5: #2d882d;
+    --g6: #39b039;
+    --g7: #44cc44;
+    --g8: #55ee55;
+    --g9: #00ff41;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--g0);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+    color: var(--g9);
+    image-rendering: pixelated;
+  }
+
+  #shell {
+    width: 700px;
+    border: 4px solid var(--g6);
+    box-shadow: 0 0 0 2px var(--g3), 0 0 32px var(--g4), inset 0 0 20px #00110022;
+    background: var(--g0);
+  }
+
+  /* ── title bar ── */
+  #titlebar {
+    background: var(--g3);
+    border-bottom: 4px solid var(--g6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    image-rendering: pixelated;
+  }
+  #titlebar span { font-size: 8px; color: var(--g9); letter-spacing: 2px; }
+  #titlebar .timer { color: var(--g8); font-size: 9px; }
+  #titlebar .timer.warn { color: var(--g6); animation: blink .6s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── status bar ── */
+  #statusbar {
+    background: var(--g1);
+    border-bottom: 2px solid var(--g3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px;
+  }
+  #statusbar span { font-size: 6px; color: var(--g5); letter-spacing: 1px; }
+  #facing-label { color: var(--g9); font-size: 7px; }
+
+  /* ── canvas viewport ── */
+  #viewport {
+    background: var(--g0);
+    border-bottom: 4px solid var(--g3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 0;
+  }
+  #room {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* scanline overlay */
+  #viewport::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.18) 3px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* ── narration ── */
+  #narration {
+    background: var(--g1);
+    border-bottom: 2px solid var(--g3);
+    padding: 8px 12px;
+    font-size: 7px;
+    color: var(--g7);
+    min-height: 40px;
+    line-height: 2;
+    letter-spacing: 1px;
+  }
+  #narration::before { content: '> '; color: var(--g9); }
+
+  /* ── choices panel ── */
+  #choices-panel {
+    background: var(--g0);
+    padding: 10px 12px 12px;
+    min-height: 160px;
+  }
+  #choices-header {
+    font-size: 6px;
+    color: var(--g4);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--g2);
+    padding-bottom: 4px;
+  }
+  .choice-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--g0);
+    border: 2px solid var(--g3);
+    color: var(--g6);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    padding: 7px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    line-height: 1.8;
+    image-rendering: pixelated;
+    transition: none;
+    outline: none;
+  }
+  .choice-btn:hover {
+    background: var(--g2);
+    border-color: var(--g7);
+    color: var(--g9);
+    box-shadow: inset 2px 2px 0 var(--g4);
+  }
+  .choice-btn:active { box-shadow: inset 3px 3px 0 var(--g3); }
+  .choice-btn.escape-btn {
+    border-color: var(--g9);
+    color: var(--g9);
+    animation: pulse 1s step-end infinite;
+  }
+  @keyframes pulse { 50% { border-color: var(--g5); color: var(--g7); } }
+  .choice-btn:disabled { color: var(--g3); border-color: var(--g2); cursor: default; background: var(--g0); }
+
+  /* ── key hints ── */
+  #keyhints {
+    background: var(--g1);
+    border-top: 2px solid var(--g3);
+    padding: 5px 12px;
+    display: flex;
+    gap: 20px;
+  }
+  .kh { font-size: 6px; color: var(--g4); letter-spacing: 1px; }
+  .kh span { color: var(--g8); border: 1px solid var(--g5); padding: 1px 4px; margin-right: 4px; }
+
+  /* ── inventory ── */
+  #inv-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .inv-chip {
+    background: var(--g2);
+    border: 1px solid var(--g5);
+    color: var(--g7);
+    font-size: 5px;
+    padding: 2px 5px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div id="shell">
+
+  <!-- title bar -->
+  <div id="titlebar">
+    <span>&#9632;&#9632;&#9632; ESCAPE.EXE v1.0</span>
+    <span class="timer" id="timer">10:00</span>
+    <span>&#9632;&#9632;&#9632;</span>
+  </div>
+
+  <!-- status bar -->
+  <div id="statusbar">
+    <span id="facing-label">[ NORTH ]</span>
+    <div id="inv-list"><span style="font-size:6px;color:var(--g4)">BAG: </span></div>
+  </div>
+
+  <!-- canvas -->
+  <div id="viewport">
+    <canvas id="room" width="700" height="280"></canvas>
+  </div>
+
+  <!-- narration -->
+  <div id="narration" id="narration">YOU WAKE IN A DARK ROOM. COLD AIR. A BULB FLICKERS ABOVE.</div>
+
+  <!-- choices -->
+  <div id="choices-panel">
+    <div id="choices-header">[ ACTIONS ] ───────────────────────────────────── [A] LEFT  [D] RIGHT</div>
+    <div id="choices-container"></div>
+  </div>
+
+  <!-- key hints -->
+  <div id="keyhints">
+    <div class="kh"><span>A</span>ROTATE LEFT</div>
+    <div class="kh"><span>D</span>ROTATE RIGHT</div>
+    <div class="kh"><span>CLICK</span>INTERACT</div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  PIXEL ART ESCAPE ROOM  — pure JS / Canvas
+// ─────────────────────────────────────────────
+
+const canvas = document.getElementById('room');
+const ctx    = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = canvas.width, H = canvas.height;
+
+// Palette: only black + green
+const C = {
+  black:  '#000000',
+  g1:     '#0a1a0a',
+  g2:     '#0f2f0f',
+  g3:     '#1a4a1a',
+  g4:     '#226622',
+  g5:     '#2d882d',
+  g6:     '#39b039',
+  g7:     '#44cc44',
+  g8:     '#55ee55',
+  g9:     '#00ff41',
+  wall:   '#0f1f0f',
+  floor:  '#050f05',
+};
+
+// px() — fill a pixel-art rectangle (snapped to 4px grid)
+function px(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+}
+
+// ─── GAME STATE ───────────────────────────────
+const state = {
+  facing:      0,   // 0=N 1=E 2=S 3=W
+  inventory:   [],
+  flags:       {},
+  timerLeft:   600,
+  timerActive: true,
+  done:        false,
+};
+
+const DIRS  = ['NORTH','EAST','SOUTH','WEST'];
+const ARROW = ['[ ↑ N ]','[ → E ]','[ ↓ S ]','[ ← W ]'];
+
+// ─── ACTIONS ──────────────────────────────────
+function narrate(msg) {
+  document.getElementById('narration').textContent = msg.toUpperCase();
+}
+function addInv(item) {
+  if (state.inventory.includes(item)) return;
+  state.inventory.push(item);
+  const list = document.getElementById('inv-list');
+  list.innerHTML = '<span style="font-size:6px;color:var(--g4)">BAG: </span>';
+  state.inventory.forEach(i => {
+    const chip = document.createElement('div');
+    chip.className = 'inv-chip';
+    chip.textContent = i.toUpperCase();
+    list.appendChild(chip);
+  });
+}
+function setChoices(choices) {
+  const cc = document.getElementById('choices-container');
+  cc.innerHTML = '';
+  if (!choices.length) {
+    const b = document.createElement('button');
+    b.className = 'choice-btn'; b.disabled = true;
+    b.textContent = '-- NOTHING ELSE HERE --';
+    cc.appendChild(b);
+    return;
+  }
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'choice-btn' + (c.escape ? ' escape-btn' : '');
+    b.textContent = (c.escape ? '>>> ' : '> ') + c.label.toUpperCase();
+    b.onclick = () => { c.act(); render(); };
+    cc.appendChild(b);
+  });
+}
+function setFacing(n) {
+  state.facing = ((n % 4) + 4) % 4;
+  render();
+}
+
+// actions
+function actInspectPainting()  { state.flags.paintingChecked = true;  narrate("The painting is tilted. Something is taped to the back."); }
+function actMovePainting()     { state.flags.paintingMoved = true; state.flags.hasCode = true; addInv('SLIP'); narrate("Behind the painting: a slip of paper. Symbols: star=3, tri=7, square=1."); }
+function actUseKey()           { state.flags.keyUsed = true; narrate("The key turns. One deadbolt clears. The keypad blinks — needs a code."); }
+function actEnterCode()        { state.flags.doorUnlocked = true; state.timerActive = false; narrate("3-7-1. The keypad flashes green. The door groans OPEN."); }
+function actEscape()           {
+  state.done = true; state.timerActive = false;
+  const elapsed = 600 - state.timerLeft;
+  const m = Math.floor(elapsed/60), s = elapsed % 60;
+  narrate(`YOU ESCAPED! TIME: ${m}M ${String(s).padStart(2,'0')}S. WELL PLAYED.`);
+  setChoices([{ label:'Play Again?', act: () => location.reload() }]);
+}
+function actSearchDesk()       { state.flags.deskSearched = true; narrate("Empty takeout boxes, a broken pen — and a crumpled note wedged at the back."); }
+function actReadNote()         { state.flags.noteRead = true; addInv('NOTE'); narrate("The note reads: 'The key is where answers live — behind shapes, inside the box.'"); }
+function actExamineBox()       {
+  if (!state.flags.hasBoxCombo) { narrate("Three symbol dials. You need the combination."); return; }
+  state.flags.boxOpen = true; narrate("Star-3, Tri-7, Square-1. CLICK. The box springs open!");
+}
+function actTakeKey()          { state.flags.hasKey = true; addInv('KEY'); narrate("You pocket the brass key. Cold and heavy."); }
+function actScanShelf()        { state.flags.shelfSearched = true; narrate("Most books are dummies. One spine is marked in paint: 'READ ME'."); }
+function actReadBook()         { state.flags.bookRead = true; narrate("Inside the cover: star, triangle, square — with numbers scratched beneath each."); }
+function actNoteCombination()  { state.flags.hasBoxCombo = true; narrate("Star=3, Tri=7, Square=1. You commit the code to memory."); }
+function actCheckMirror()      { state.flags.mirrorChecked = true; narrate("Your reflection stares back. The crack runs deep. Nothing behind it."); }
+function actCheckVent()        { state.flags.ventChecked = true; narrate("The vent pops off — just a dark shaft full of dust. Dead end."); }
+
+// ─── SCENE CHOICES ────────────────────────────
+const scenes = {
+  north: {
+    choices: () => {
+      const c = [];
+      if (!state.flags.paintingChecked) c.push({ label:'Inspect crooked painting', act: actInspectPainting });
+      if (state.flags.paintingChecked && !state.flags.paintingMoved) c.push({ label:'Lift painting off wall', act: actMovePainting });
+      if (state.flags.hasKey && !state.flags.keyUsed) c.push({ label:'Use key on door lock', act: actUseKey });
+      if (state.flags.keyUsed && !state.flags.doorUnlocked && state.flags.hasCode) c.push({ label:'Enter code 3-7-1 on keypad', act: actEnterCode });
+      if (state.flags.doorUnlocked) c.push({ label:'Escape through the door!', act: actEscape, escape: true });
+      return c;
+    }
+  },
+  east: {
+    choices: () => {
+      const c = [];
+      if (!state.flags.deskSearched) c.push({ label:'Search desk drawers', act: actSearchDesk });
+      if (state.flags.deskSearched && !state.flags.noteRead) c.push({ label:'Read crumpled note', act: actReadNote });
+      if (!state.flags.boxOpen) c.push({ label:'Examine locked box on desk', act: actExamineBox });
+      if (state.flags.boxOpen && !state.flags.hasKey) c.push({ label:'Take the key from box', act: actTakeKey });
+      return c;
+    }
+  },
+  south: {
+    choices: () => {
+      const c = [];
+      if (!state.flags.shelfSearched) c.push({ label:'Scan the bookshelf', act: actScanShelf });
+      if (state.flags.shelfSearched && !state.flags.bookRead) c.push({ label:'Pull the marked book', act: actReadBook });
+      if (state.flags.bookRead && !state.flags.hasBoxCombo) c.push({ label:'Note the symbol code', act: actNoteCombination });
+      return c;
+    }
+  },
+  west: {
+    choices: () => {
+      const c = [];
+      if (!state.flags.mirrorChecked) c.push({ label:'Look in cracked mirror', act: actCheckMirror });
+      if (!state.flags.ventChecked) c.push({ label:'Remove vent grate', act: actCheckVent });
+      if (state.flags.hasBoxCombo && !state.flags.boxOpen) c.push({ label:'Go to desk — try combination', act: () => { setFacing(1); narrate("You turn toward the desk."); } });
+      return c;
+    }
+  }
+};
+
+// ─── DRAWING HELPERS ──────────────────────────
+
+// Shared room base: floor, ceiling, walls with pixel grid
+function drawRoomBase() {
+  // background wall
+  px(0, 0, W, H, C.black);
+
+  // wall (upper 65%)
+  const wallH = Math.round(H * 0.65);
+  px(0, 0, W, wallH, C.wall);
+
+  // pixel-art horizontal scanlines on wall
+  for (let y = 0; y < wallH; y += 8) {
+    px(0, y, W, 1, C.g1);
+  }
+
+  // floor (lower 35%)
+  px(0, wallH, W, H - wallH, C.floor);
+  // floor tiles (8x8 grid)
+  for (let x = 0; x < W; x += 16) {
+    for (let y = wallH; y < H; y += 8) {
+      if (((x/16)+(y/8)) % 2 === 0) px(x, y, 16, 8, '#050f05');
+      else px(x, y, 16, 8, '#081508');
+    }
+  }
+
+  // wall-floor seam
+  px(0, wallH - 4, W, 4, C.g3);
+  px(0, wallH, W, 2, C.g4);
+
+  // ceiling strip
+  px(0, 0, W, 8, C.g3);
+  px(0, 8, W, 2, C.g4);
+
+  // corner perspective lines (pixel steps)
+  drawPixelLine(0, 0, 80, wallH, C.g2);
+  drawPixelLine(W, 0, W-80, wallH, C.g2);
+
+  // light bulb + glow at top center
+  px(W/2 - 4, 8, 8, 4, C.g6);   // cord
+  px(W/2 - 8, 12, 16, 12, C.g7); // bulb body
+  px(W/2 - 4, 24, 8, 4, C.g8);
+  // glow rays
+  for (let i = 0; i < 5; i++) {
+    const rx = W/2 - 24 + i*12;
+    px(rx, 28, 4, 2, C.g3);
+  }
+}
+
+// pixel-perfect Bresenham-ish step line
+function drawPixelLine(x0, y0, x1, y1, color) {
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const steps = Math.max(dx, dy);
+  for (let i = 0; i <= steps; i += 4) {
+    const t = i / steps;
+    const x = Math.round(x0 + (x1 - x0) * t);
+    const y = Math.round(y0 + (y1 - y0) * t);
+    px(x, y, 4, 4, color);
+  }
+}
+
+// pixel text (use canvas font)
+function pixelText(text, x, y, color, size = 8) {
+  ctx.font = `${size}px 'Press Start 2P', monospace`;
+  ctx.fillStyle = color;
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillText(text, x, y);
+}
+
+// ─── NORTH WALL ───────────────────────────────
+function drawNorth() {
+  drawRoomBase();
+
+  // DOOR  (center)
+  const dx = W/2 - 56, dy = 30, dw = 112, dh = 145;
+  px(dx, dy, dw, dh, C.g2);
+  px(dx, dy, dw, 4, C.g3); // top trim
+  px(dx, dy+dh, dw, 4, C.g3); // bottom trim
+  px(dx, dy, 4, dh, C.g3); // left trim
+  px(dx+dw-4, dy, 4, dh, C.g3); // right trim
+
+  // door panels (pixel art)
+  px(dx+8, dy+8, dw-16, 48, C.g1);
+  px(dx+8, dy+64, dw-16, 48, C.g1);
+  px(dx+12, dy+12, dw-24, 40, C.g2);
+  px(dx+12, dy+68, dw-24, 40, C.g2);
+
+  // door handle
+  const hcolor = state.flags.keyUsed ? C.g8 : C.g4;
+  px(dx+dw-20, dy+dh/2-8, 12, 16, hcolor);
+  px(dx+dw-24, dy+dh/2, 8, 8, hcolor);
+
+  // keypad (right of door)
+  const kx = dx+dw+16, ky = dy+40;
+  px(kx, ky, 44, 64, C.g1);
+  px(kx+2, ky+2, 40, 60, C.g2);
+  // LED
+  const ledCol = state.flags.doorUnlocked ? C.g9 : state.flags.keyUsed ? C.g6 : C.g4;
+  px(kx+14, ky+6, 16, 8, ledCol);
+  // keypad buttons (3x3)
+  for (let r = 0; r < 3; r++) for (let col2 = 0; col2 < 3; col2++) {
+    px(kx+4+col2*12, ky+18+r*12, 10, 8, C.g3);
+  }
+  pixelText(state.flags.doorUnlocked ? 'OPEN' : state.flags.keyUsed ? '?????' : 'LOCK', kx-2, ky+78, C.g5, 6);
+
+  // PAINTING (left of door, slightly tilted via pixel offset trick)
+  const px2 = dx - 110, py2 = 40;
+  if (!state.flags.paintingMoved) {
+    // tilted: stagger rows by 1px
+    for (let row = 0; row < 72; row++) {
+      const ox = Math.floor(row * 0.07);
+      px(px2 + ox, py2 + row, 88, 1, row < 4 || row > 68 || (row > 1 && row < 4) ? C.g4 : C.g2);
+    }
+    // frame
+    px(px2, py2, 88, 4, C.g4); px(px2, py2+68, 88, 4, C.g4);
+    px(px2, py2, 4, 72, C.g4); px(px2+84, py2, 4, 72, C.g4);
+    // lighthouse pixel art inside
+    drawLighthouse(px2+8, py2+8);
+  } else {
+    // painting leaning against wall
+    px(px2+4, py2+70, 88, 8, C.g3);
+    px(px2+8, py2+8, 80, 64, C.g2);
+    px(px2+8, py2+8, 80, 4, C.g4);
+    pixelText('(REMOVED)', px2+10, py2+50, C.g4, 6);
+  }
+}
+
+function drawLighthouse(ox, oy) {
+  // sky
+  px(ox, oy, 72, 56, C.g1);
+  // sea
+  for (let x = 0; x < 72; x+=8) px(ox+x, oy+44, 8, 4, (x/8)%2===0?C.g3:C.g2);
+  // tower
+  px(ox+28, oy+12, 16, 36, C.g4);
+  px(ox+24, oy+8, 24, 8, C.g5);   // top
+  px(ox+26, oy+4, 20, 6, C.g6);   // light housing
+  // light beam
+  px(ox+30, oy+4, 4, 4, C.g9);
+  // windows
+  px(ox+30, oy+24, 8, 8, C.g2);
+  px(ox+30, oy+36, 8, 6, C.g2);
+}
+
+// ─── EAST WALL ────────────────────────────────
+function drawEast() {
+  drawRoomBase();
+
+  // DESK
+  const tx = W/2-110, ty = Math.round(H*0.52);
+  px(tx, ty, 220, 12, C.g4);      // tabletop
+  px(tx, ty+2, 220, 4, C.g5);     // highlight edge
+  px(tx+8, ty+12, 16, 60, C.g3); // left leg
+  px(tx+196, ty+12, 16, 60, C.g3); // right leg
+  // drawer
+  px(tx+40, ty+14, 80, 32, C.g2);
+  px(tx+42, ty+16, 76, 28, C.g1);
+  px(tx+76, ty+28, 8, 8, C.g4);  // handle
+
+  // BOX ON DESK
+  const bx = tx+50, by = ty-44;
+  px(bx, by, 80, 44, C.g2);
+  px(bx, by, 80, 4, C.g4);
+  px(bx, by, 4, 44, C.g4);
+  px(bx+76, by, 4, 44, C.g4);
+  px(bx, by+40, 80, 4, C.g4);
+
+  if (!state.flags.boxOpen) {
+    // lock
+    px(bx+28, by+14, 24, 16, C.g3);
+    px(bx+34, by+8, 12, 8, C.g3);
+    px(bx+36, by+6, 8, 4, C.g0);
+    px(bx+38, by+14, 4, 8, C.g5);
+    // dials
+    pixelText('* ^ #', bx+8, by+36, C.g4, 7);
+  } else {
+    px(bx+4, by+4, 72, 36, '#001800');
+    pixelText('OPEN!', bx+14, by+26, C.g9, 8);
+    if (!state.flags.hasKey) {
+      // key inside
+      px(bx+30, by+30, 20, 8, C.g7);
+      px(bx+30, by+26, 8, 16, C.g7);
+      px(bx+30, by+26, 8, 4, C.g8);
+    }
+  }
+
+  // LAMP on desk
+  px(tx+188, ty-60, 8, 60, C.g3);
+  px(tx+168, ty-62, 32, 6, C.g4);
+  // glow
+  for (let gx = 0; gx < 5; gx++) px(tx+168+gx*6, ty-56, 6, 2, C.g2);
+
+  // NOTE on desk (after searched)
+  if (state.flags.deskSearched && !state.flags.noteRead) {
+    px(tx+140, ty-20, 28, 20, C.g3);
+    pixelText('?', tx+148, ty-6, C.g7, 9);
+  }
+}
+
+// ─── SOUTH WALL ───────────────────────────────
+function drawSouth() {
+  drawRoomBase();
+
+  // BOOKSHELF
+  const sx = W/2-160, sy = 10, sw = 320, sh = 160;
+  px(sx, sy, sw, sh, C.g2);
+  px(sx, sy, 8, sh, C.g3);
+  px(sx+sw-8, sy, 8, sh, C.g3);
+  px(sx, sy, sw, 8, C.g3);
+  px(sx, sy+sh-6, sw, 6, C.g3);
+
+  // shelf planks
+  const rows = 4;
+  const bookColors = [C.g3, C.g4, C.g5, C.g2, C.g3, C.g5, C.g4, C.g3, C.g2, C.g5, C.g4, C.g3];
+  for (let r = 0; r < rows; r++) {
+    const rowY = sy + 8 + r * 38;
+    px(sx+4, rowY+32, sw-8, 4, C.g4); // shelf plank
+    // books
+    let bx2 = sx+10;
+    for (let b = 0; b < 12; b++) {
+      const bw = 16 + (b % 3)*4;
+      const bh = 20 + (b % 4)*4;
+      if (bx2 + bw > sx+sw-8) break;
+      // highlighted "READ ME" book
+      if (r === 1 && b === 5 && !state.flags.bookRead) {
+        px(bx2, rowY+32-bh, bw, bh, C.g7);
+        px(bx2+2, rowY+32-bh+2, bw-4, 4, C.g9);
+      } else {
+        px(bx2, rowY+32-bh, bw, bh, bookColors[(r*12+b)%bookColors.length]);
+        // spine line
+        px(bx2+2, rowY+32-bh+4, 2, bh-8, C.g2);
+      }
+      bx2 += bw + 2;
+    }
+  }
+}
+
+// ─── WEST WALL ────────────────────────────────
+function drawWest() {
+  drawRoomBase();
+
+  // MIRROR (center-ish)
+  const mx = W/2-70, my = 20, mw = 100, mh = 140;
+  // frame
+  px(mx, my, mw, mh, C.g3);
+  px(mx+6, my+6, mw-12, mh-12, C.g1);
+  // frame details
+  for (let i=0;i<3;i++) {
+    px(mx+i*2, my+i*2, mw-i*4, 4, C.g4);
+    px(mx+i*2, my+mh-i*4-4, mw-i*4, 4, C.g4);
+  }
+  // reflection tint
+  px(mx+8, my+8, mw-16, mh-16, '#020f02');
+  // pixel silhouette in mirror
+  px(mx+38, my+30, 24, 20, C.g3); // head
+  px(mx+34, my+50, 32, 50, C.g2); // body
+  px(mx+30, my+100, 12, 28, C.g2); // leg L
+  px(mx+50, my+100, 12, 28, C.g2); // leg R
+  // crack lines
+  ctx.strokeStyle = C.g6;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2,3]);
+  ctx.beginPath();
+  ctx.moveTo(mx+mw*0.7, my+4);
+  ctx.lineTo(mx+mw, my+mh*0.45);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(mx+mw*0.7, my+4);
+  ctx.lineTo(mx+mw*0.4, my+mh*0.35);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // VENT (lower-right)
+  const vx = W/2+100, vy = Math.round(H*0.45);
+  px(vx, vy, 80, 60, C.g1);
+  px(vx+2, vy+2, 76, 56, C.g2);
+  if (!state.flags.ventChecked) {
+    // grate bars
+    for (let i = 0; i < 6; i++) px(vx+4, vy+4+i*9, 72, 5, C.g3);
+    for (let i = 0; i < 4; i++) px(vx+4+i*18, vy+4, 4, 52, C.g4);
+    // corner screws
+    px(vx+4,vy+4,4,4,C.g5); px(vx+72,vy+4,4,4,C.g5);
+    px(vx+4,vy+52,4,4,C.g5); px(vx+72,vy+52,4,4,C.g5);
+  } else {
+    // vent open
+    px(vx+4, vy+4, 72, 52, C.black);
+    pixelText('EMPTY', vx+6, vy+34, C.g3, 6);
+  }
+
+  // TABLE (left)
+  const tabX = W/2-190, tabY = Math.round(H*0.55);
+  px(tabX, tabY, 100, 10, C.g4);
+  px(tabX+4, tabY+10, 12, 50, C.g3);
+  px(tabX+84, tabY+10, 12, 50, C.g3);
+  // lamp on table
+  px(tabX+44, tabY-48, 8, 48, C.g3);
+  px(tabX+28, tabY-52, 40, 6, C.g5);
+  // glow
+  px(tabX+30, tabY-46, 36, 4, C.g2);
+}
+
+// ─── MAIN RENDER ──────────────────────────────
+function render() {
+  const key = ['north','east','south','west'][state.facing];
+  document.getElementById('facing-label').textContent = ARROW[state.facing];
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (key === 'north') drawNorth();
+  else if (key === 'east') drawEast();
+  else if (key === 'south') drawSouth();
+  else drawWest();
+
+  const choices = scenes[key].choices();
+  setChoices(choices);
+}
+
+// ─── KEYBOARD ─────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (state.done) return;
+  const k = e.key.toLowerCase();
+  if (k === 'a') { setFacing(state.facing - 1); }
+  if (k === 'd') { setFacing(state.facing + 1); }
+});
+
+// ─── TIMER ────────────────────────────────────
+const timerEl = document.getElementById('timer');
+setInterval(() => {
+  if (!state.timerActive) return;
+  state.timerLeft--;
+  if (state.timerLeft <= 0) {
+    state.timerActive = false; state.done = true;
+    narrate("TIME'S UP. THE ROOM WINS.");
+    setChoices([{ label:'Try Again?', act: () => location.reload() }]);
+    return;
+  }
+  const m = Math.floor(state.timerLeft / 60);
+  const s = state.timerLeft % 60;
+  timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  if (state.timerLeft <= 60) timerEl.className = 'timer warn';
+  else if (state.timerLeft <= 180) timerEl.style.color = 'var(--g6)';
+}, 1000);
+
+// ─── INIT ─────────────────────────────────────
+render();
+narrate("You wake in a dark room. Cold air. A bulb flickers. Find a way out.");
+</script>
+</body>
+</html>
