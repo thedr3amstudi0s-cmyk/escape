@@ -2,723 +2,911 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESCAPE.EXE</title>
+<title>ESCAPE.EXE v3.0</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+:root{
+  --bk:#000;--g1:#0a1a0a;--g2:#0f2f0f;--g3:#1a4a1a;
+  --g4:#226622;--g5:#2d882d;--g6:#39b039;--g7:#44cc44;
+  --g8:#55ee55;--g9:#00ff41;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#000;min-height:100vh;display:flex;align-items:center;
+  justify-content:center;font-family:'Press Start 2P',monospace;color:var(--g9);}
+#shell{width:700px;border:4px solid var(--g6);
+  box-shadow:0 0 0 2px var(--g3),0 0 40px var(--g5);background:#000;}
 
-  :root {
-    --g0: #000000;
-    --g1: #0a1a0a;
-    --g2: #0f2f0f;
-    --g3: #1a4a1a;
-    --g4: #226622;
-    --g5: #2d882d;
-    --g6: #39b039;
-    --g7: #44cc44;
-    --g8: #55ee55;
-    --g9: #00ff41;
-  }
+/* title */
+#titlebar{background:var(--g3);border-bottom:4px solid var(--g6);
+  display:flex;justify-content:space-between;align-items:center;padding:6px 12px;}
+#titlebar .logo{font-size:8px;letter-spacing:2px;}
+#timer{font-size:10px;color:var(--g8);}
+#timer.warn{animation:blink .5s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+/* progress */
+#prog-bar{height:5px;background:var(--g2);}
+#prog-fill{height:5px;background:var(--g9);width:0%;transition:width .5s;}
 
-  body {
-    background: var(--g0);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Press Start 2P', monospace;
-    color: var(--g9);
-    image-rendering: pixelated;
-  }
+/* status */
+#statusbar{background:var(--g1);border-bottom:2px solid var(--g3);
+  display:flex;justify-content:space-between;align-items:center;padding:4px 12px;flex-wrap:wrap;gap:4px;}
+#facing{font-size:7px;color:var(--g9);}
+#inv-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.chip{background:var(--g2);border:1px solid var(--g5);color:var(--g7);font-size:5px;padding:2px 5px;}
 
-  #shell {
-    width: 700px;
-    border: 4px solid var(--g6);
-    box-shadow: 0 0 0 2px var(--g3), 0 0 32px var(--g4), inset 0 0 20px #00110022;
-    background: var(--g0);
-  }
+/* viewport */
+#viewport{position:relative;border-bottom:4px solid var(--g3);}
+#room{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
+#viewport::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,.14) 3px,rgba(0,0,0,.14) 4px);}
 
-  /* ── title bar ── */
-  #titlebar {
-    background: var(--g3);
-    border-bottom: 4px solid var(--g6);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10px;
-    image-rendering: pixelated;
-  }
-  #titlebar span { font-size: 8px; color: var(--g9); letter-spacing: 2px; }
-  #titlebar .timer { color: var(--g8); font-size: 9px; }
-  #titlebar .timer.warn { color: var(--g6); animation: blink .6s step-end infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
+/* narration */
+#narr{background:var(--g1);border-bottom:2px solid var(--g3);
+  padding:8px 12px;font-size:7px;color:var(--g7);min-height:46px;line-height:2;letter-spacing:.5px;}
+#narr::before{content:'> ';color:var(--g9);}
 
-  /* ── status bar ── */
-  #statusbar {
-    background: var(--g1);
-    border-bottom: 2px solid var(--g3);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 10px;
-  }
-  #statusbar span { font-size: 6px; color: var(--g5); letter-spacing: 1px; }
-  #facing-label { color: var(--g9); font-size: 7px; }
+/* INPUT OVERLAY (math puzzles, number entry) */
+#input-overlay{display:none;background:var(--g1);border-bottom:2px solid var(--g3);
+  padding:8px 12px;font-size:7px;color:var(--g9);min-height:46px;line-height:2;}
+#input-overlay.active{display:block;}
+#input-prompt{color:var(--g7);margin-bottom:4px;}
+#input-field{background:var(--g2);border:2px solid var(--g6);color:var(--g9);
+  font-family:'Press Start 2P',monospace;font-size:9px;padding:4px 8px;
+  letter-spacing:2px;width:100%;outline:none;margin-top:4px;}
 
-  /* ── canvas viewport ── */
-  #viewport {
-    background: var(--g0);
-    border-bottom: 4px solid var(--g3);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    padding: 0;
-  }
-  #room {
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-  }
+/* choices */
+#choices-panel{background:#000;padding:8px 12px 10px;min-height:180px;}
+#ch-header{font-size:6px;color:var(--g4);letter-spacing:2px;margin-bottom:6px;
+  border-bottom:1px solid var(--g2);padding-bottom:4px;}
+.opt{display:flex;align-items:flex-start;gap:8px;font-size:7px;color:var(--g5);
+  padding:5px 8px;margin-bottom:4px;border:2px solid var(--g2);letter-spacing:.5px;line-height:1.8;
+  cursor:default;user-select:none;}
+.opt.sel{background:var(--g2);border-color:var(--g7);color:var(--g9);}
+.opt.sel .arr{color:var(--g9);}
+.opt.esc{border-color:var(--g9) !important;color:var(--g9) !important;animation:pulse 1s step-end infinite;}
+.opt.hot{border-color:var(--g6);color:var(--g8);}
+.arr{color:var(--g3);font-size:8px;flex-shrink:0;width:12px;}
+.opt.sel .arr{color:var(--g9);}
 
-  /* scanline overlay */
-  #viewport::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent 3px,
-      rgba(0,0,0,0.18) 3px,
-      rgba(0,0,0,0.18) 4px
-    );
-    pointer-events: none;
-  }
+/* key hints */
+#keyhints{background:var(--g1);border-top:2px solid var(--g3);padding:5px 12px;
+  display:flex;gap:14px;flex-wrap:wrap;}
+.kh{font-size:6px;color:var(--g4);}
+.kh b{color:var(--g8);border:1px solid var(--g5);padding:1px 4px;margin-right:4px;}
 
-  /* ── narration ── */
-  #narration {
-    background: var(--g1);
-    border-bottom: 2px solid var(--g3);
-    padding: 8px 12px;
-    font-size: 7px;
-    color: var(--g7);
-    min-height: 40px;
-    line-height: 2;
-    letter-spacing: 1px;
-  }
-  #narration::before { content: '> '; color: var(--g9); }
+/* cooldown flash */
+#cooldown-flash{position:fixed;top:0;left:0;width:100%;height:3px;
+  background:var(--g6);opacity:0;pointer-events:none;transition:opacity .05s;}
 
-  /* ── choices panel ── */
-  #choices-panel {
-    background: var(--g0);
-    padding: 10px 12px 12px;
-    min-height: 160px;
-  }
-  #choices-header {
-    font-size: 6px;
-    color: var(--g4);
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--g2);
-    padding-bottom: 4px;
-  }
-  .choice-btn {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: var(--g0);
-    border: 2px solid var(--g3);
-    color: var(--g6);
-    font-family: 'Press Start 2P', monospace;
-    font-size: 7px;
-    padding: 7px 10px;
-    margin-bottom: 6px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    line-height: 1.8;
-    image-rendering: pixelated;
-    transition: none;
-    outline: none;
-  }
-  .choice-btn:hover {
-    background: var(--g2);
-    border-color: var(--g7);
-    color: var(--g9);
-    box-shadow: inset 2px 2px 0 var(--g4);
-  }
-  .choice-btn:active { box-shadow: inset 3px 3px 0 var(--g3); }
-  .choice-btn.escape-btn {
-    border-color: var(--g9);
-    color: var(--g9);
-    animation: pulse 1s step-end infinite;
-  }
-  @keyframes pulse { 50% { border-color: var(--g5); color: var(--g7); } }
-  .choice-btn:disabled { color: var(--g3); border-color: var(--g2); cursor: default; background: var(--g0); }
-
-  /* ── key hints ── */
-  #keyhints {
-    background: var(--g1);
-    border-top: 2px solid var(--g3);
-    padding: 5px 12px;
-    display: flex;
-    gap: 20px;
-  }
-  .kh { font-size: 6px; color: var(--g4); letter-spacing: 1px; }
-  .kh span { color: var(--g8); border: 1px solid var(--g5); padding: 1px 4px; margin-right: 4px; }
-
-  /* ── inventory ── */
-  #inv-list { display: flex; flex-wrap: wrap; gap: 4px; }
-  .inv-chip {
-    background: var(--g2);
-    border: 1px solid var(--g5);
-    color: var(--g7);
-    font-size: 5px;
-    padding: 2px 5px;
-    letter-spacing: 1px;
-  }
+@keyframes pulse{50%{border-color:var(--g5);color:var(--g7);}}
 </style>
 </head>
 <body>
-
+<div id="cooldown-flash"></div>
 <div id="shell">
-
-  <!-- title bar -->
   <div id="titlebar">
-    <span>&#9632;&#9632;&#9632; ESCAPE.EXE v1.0</span>
-    <span class="timer" id="timer">10:00</span>
-    <span>&#9632;&#9632;&#9632;</span>
+    <div class="logo">&#9632;&#9632; ESCAPE.EXE v3.0</div>
+    <div id="timer">20:00</div>
+    <div class="logo">&#9632;&#9632;</div>
   </div>
-
-  <!-- status bar -->
+  <div id="prog-bar"><div id="prog-fill"></div></div>
   <div id="statusbar">
-    <span id="facing-label">[ NORTH ]</span>
-    <div id="inv-list"><span style="font-size:6px;color:var(--g4)">BAG: </span></div>
+    <span id="facing">[ NORTH WALL ]</span>
+    <div id="inv-row"><span style="font-size:6px;color:var(--g4)">BAG:</span></div>
   </div>
-
-  <!-- canvas -->
-  <div id="viewport">
-    <canvas id="room" width="700" height="280"></canvas>
+  <div id="viewport"><canvas id="room" width="700" height="280"></canvas></div>
+  <div id="narr">YOU WAKE ON A COLD FLOOR. A VAULT DOOR LOOMS NORTH. THE LIGHTS ARE OUT. THINK CAREFULLY.</div>
+  <div id="input-overlay">
+    <div id="input-prompt"></div>
+    <input id="input-field" type="text" maxlength="20" autocomplete="off" spellcheck="false"/>
   </div>
-
-  <!-- narration -->
-  <div id="narration" id="narration">YOU WAKE IN A DARK ROOM. COLD AIR. A BULB FLICKERS ABOVE.</div>
-
-  <!-- choices -->
   <div id="choices-panel">
-    <div id="choices-header">[ ACTIONS ] ───────────────────────────────────── [A] LEFT  [D] RIGHT</div>
-    <div id="choices-container"></div>
+    <div id="ch-header">[ ACTIONS ] ─────── W/S: MOVE CURSOR   SPACE: SELECT   A/D or 1-4: ROTATE</div>
+    <div id="opts"></div>
   </div>
-
-  <!-- key hints -->
   <div id="keyhints">
-    <div class="kh"><span>A</span>ROTATE LEFT</div>
-    <div class="kh"><span>D</span>ROTATE RIGHT</div>
-    <div class="kh"><span>CLICK</span>INTERACT</div>
+    <div class="kh"><b>W</b>UP</div>
+    <div class="kh"><b>S</b>DOWN</div>
+    <div class="kh"><b>SPACE</b>SELECT</div>
+    <div class="kh"><b>A/D</b>ROTATE</div>
+    <div class="kh"><b>1-4</b>JUMP WALL</div>
   </div>
-
 </div>
-
 <script>
-// ─────────────────────────────────────────────
-//  PIXEL ART ESCAPE ROOM  — pure JS / Canvas
-// ─────────────────────────────────────────────
+// ╔══════════════════════════════════════════════════════╗
+//   ESCAPE.EXE v3.0
+//   • Keyboard-driven menu (W/S/SPACE)
+//   • Anti-spam: 400ms cooldown between actions
+//   • Math puzzles with verified correct answers
+//   • Number memorisation across walls
+// ╚══════════════════════════════════════════════════════╝
 
-const canvas = document.getElementById('room');
-const ctx    = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-const W = canvas.width, H = canvas.height;
+const canvas=document.getElementById('room');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=canvas.width,H=canvas.height;
 
-// Palette: only black + green
-const C = {
-  black:  '#000000',
-  g1:     '#0a1a0a',
-  g2:     '#0f2f0f',
-  g3:     '#1a4a1a',
-  g4:     '#226622',
-  g5:     '#2d882d',
-  g6:     '#39b039',
-  g7:     '#44cc44',
-  g8:     '#55ee55',
-  g9:     '#00ff41',
-  wall:   '#0f1f0f',
-  floor:  '#050f05',
+// ── COLOUR PALETTE ─────────────────────────────────────
+const C={
+  bk:'#000000',g1:'#0a1a0a',g2:'#0f2f0f',g3:'#1a4a1a',
+  g4:'#226622',g5:'#2d882d',g6:'#39b039',g7:'#44cc44',
+  g8:'#55ee55',g9:'#00ff41',
+};
+function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(~~x,~~y,~~w,~~h);}
+function pt(t,x,y,c,s=8){ctx.font=`${s}px 'Press Start 2P',monospace`;ctx.fillStyle=c;ctx.fillText(t,~~x,~~y);}
+function line(x0,y0,x1,y1,c,step=3){
+  const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),n=Math.max(dx,dy);
+  for(let i=0;i<=n;i+=step){const t=i/n;px(~~(x0+(x1-x0)*t),~~(y0+(y1-y0)*t),step,step,c);}
+}
+
+// ╔══════════════════════════════════════════════════════╗
+//   MATH PUZZLE SYSTEM
+//   All answers are pre-computed here so there is no
+//   chance of the game giving a wrong answer.
+//
+//   PUZZLE A  (EAST wall terminal):
+//     "Circuit resistance: (17 × 4) − 33 = ?"
+//      17 × 4 = 68 ;  68 − 33 = 35   → answer 35
+//
+//   PUZZLE B  (SOUTH safe):
+//     "The safe dial code uses two clues you found:
+//      Clue 1 (journal):  base = 12 × 3 = 36
+//      Clue 2 (west note): offset = 36 ÷ 4 = 9
+//      Final code = base + offset = 36 + 9 = 45"
+//      → answer 45
+//
+//   PUZZLE C  (NORTH keypad):
+//     "Alarm bypass: you found three room numbers
+//      scratched on walls: 7, 13, 19.
+//      Code = sum of all three = 7+13+19 = 39"
+//      → answer 39
+//
+//   PUZZLE D  (WEST fuse sequence):
+//     "Fuse sequence tag reads: 'Insert in order.
+//      Fuse wattages: 6W, 9W, 15W.
+//      Total load = 6+9+15 = 30.
+//      Verify: enter total wattage."
+//      → answer 30
+// ╚══════════════════════════════════════════════════════╝
+const PUZZLES = {
+  A:{ prompt:"TERMINAL: CIRCUIT RESISTANCE = (17 x 4) - 33 = ?", answer:"35",
+      hint:"17 x 4 = 68. THEN 68 - 33 = ?" },
+  B:{ prompt:"SAFE CODE: BASE = 12x3. OFFSET = BASE/4. CODE = BASE+OFFSET. ENTER CODE:",
+      answer:"45",
+      hint:"12x3=36. 36/4=9. 36+9=45." },
+  C:{ prompt:"ALARM BYPASS: ROOM NUMBERS 7, 13, 19 (scratched on walls). ENTER THEIR SUM:",
+      answer:"39",
+      hint:"7+13=20. 20+19=39." },
+  D:{ prompt:"FUSE LOAD CHECK: 6W + 9W + 15W = TOTAL WATTAGE? ENTER IT:",
+      answer:"30",
+      hint:"6+9=15. 15+15=30." },
 };
 
-// px() — fill a pixel-art rectangle (snapped to 4px grid)
-function px(x, y, w, h, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-}
-
-// ─── GAME STATE ───────────────────────────────
-const state = {
-  facing:      0,   // 0=N 1=E 2=S 3=W
-  inventory:   [],
-  flags:       {},
-  timerLeft:   600,
-  timerActive: true,
-  done:        false,
-};
-
-const DIRS  = ['NORTH','EAST','SOUTH','WEST'];
-const ARROW = ['[ ↑ N ]','[ → E ]','[ ↓ S ]','[ ← W ]'];
-
-// ─── ACTIONS ──────────────────────────────────
-function narrate(msg) {
-  document.getElementById('narration').textContent = msg.toUpperCase();
-}
-function addInv(item) {
-  if (state.inventory.includes(item)) return;
-  state.inventory.push(item);
-  const list = document.getElementById('inv-list');
-  list.innerHTML = '<span style="font-size:6px;color:var(--g4)">BAG: </span>';
-  state.inventory.forEach(i => {
-    const chip = document.createElement('div');
-    chip.className = 'inv-chip';
-    chip.textContent = i.toUpperCase();
-    list.appendChild(chip);
-  });
-}
-function setChoices(choices) {
-  const cc = document.getElementById('choices-container');
-  cc.innerHTML = '';
-  if (!choices.length) {
-    const b = document.createElement('button');
-    b.className = 'choice-btn'; b.disabled = true;
-    b.textContent = '-- NOTHING ELSE HERE --';
-    cc.appendChild(b);
-    return;
+// ── ANTI-SPAM ───────────────────────────────────────────
+const COOLDOWN_MS = 350;
+let lastAction = 0;
+function canAct(){
+  const now=Date.now();
+  if(now-lastAction<COOLDOWN_MS){
+    // flash the top bar
+    const f=document.getElementById('cooldown-flash');
+    f.style.opacity='1';
+    setTimeout(()=>f.style.opacity='0',120);
+    return false;
   }
-  choices.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'choice-btn' + (c.escape ? ' escape-btn' : '');
-    b.textContent = (c.escape ? '>>> ' : '> ') + c.label.toUpperCase();
-    b.onclick = () => { c.act(); render(); };
-    cc.appendChild(b);
+  lastAction=now;
+  return true;
+}
+
+// ── MENU CURSOR ─────────────────────────────────────────
+let cursor=0;
+let currentOpts=[];
+
+function renderMenu(opts){
+  currentOpts=opts;
+  if(cursor>=opts.length)cursor=opts.length-1;
+  if(cursor<0)cursor=0;
+  const el=document.getElementById('opts');
+  el.innerHTML='';
+  opts.forEach((o,i)=>{
+    const div=document.createElement('div');
+    div.className='opt'+(i===cursor?' sel':'')+(o.esc?' esc':'')+(o.hot?' hot':'');
+    div.innerHTML=`<span class="arr">${i===cursor?'▶':' '}</span><span>${o.label.toUpperCase()}</span>`;
+    el.appendChild(div);
   });
 }
-function setFacing(n) {
-  state.facing = ((n % 4) + 4) % 4;
+
+function moveCursor(dir){
+  if(!canAct())return;
+  cursor=((cursor+dir)+currentOpts.length)%currentOpts.length;
+  renderMenu(currentOpts);
+}
+
+function selectCurrent(){
+  if(!canAct())return;
+  if(!currentOpts.length)return;
+  const o=currentOpts[cursor];
+  if(o&&o.fn) o.fn();
+}
+
+// ── INPUT OVERLAY (for puzzle answers) ──────────────────
+let inputMode=false;
+let inputCallback=null;
+let inputAttempts=0;
+const MAX_ATTEMPTS=3;
+
+function openInput(promptTxt,cb){
+  inputMode=true;
+  inputCallback=cb;
+  inputAttempts=0;
+  document.getElementById('input-prompt').textContent=promptTxt.toUpperCase();
+  document.getElementById('input-field').value='';
+  document.getElementById('input-overlay').classList.add('active');
+  document.getElementById('narr').style.display='none';
+  setTimeout(()=>document.getElementById('input-field').focus(),50);
+}
+
+function closeInput(){
+  inputMode=false;
+  inputCallback=null;
+  document.getElementById('input-overlay').classList.remove('active');
+  document.getElementById('narr').style.display='';
+}
+
+function submitInput(){
+  const val=document.getElementById('input-field').value.trim();
+  if(!val)return;
+  inputAttempts++;
+  const result=inputCallback(val,inputAttempts);
+  if(result===true){
+    closeInput();
+    render();
+  } else {
+    // wrong answer
+    document.getElementById('input-field').value='';
+    const penalty = inputAttempts>=MAX_ATTEMPTS ? 60 : 20;
+    S.timerLeft=Math.max(0,S.timerLeft-penalty);
+    narr(`WRONG. -${penalty}S PENALTY. ${result||'TRY AGAIN.'}`+(inputAttempts>=MAX_ATTEMPTS?' HINT: '+result:''));
+    document.getElementById('input-field').focus();
+    // after 3 wrong: show hint in prompt
+    if(inputAttempts>=MAX_ATTEMPTS){
+      document.getElementById('input-prompt').textContent=
+        document.getElementById('input-prompt').textContent+' | HINT GIVEN';
+    }
+  }
+}
+
+// ── GAME STATE ──────────────────────────────────────────
+const S={
+  facing:0,   // 0N 1E 2S 3W
+  inv:[],
+  f:{},       // flags
+  timerLeft:1200,
+  timerOn:true,
+  done:false,
+  steps:0,
+  uvOn:false,
+  // Numbers the player must remember (shown in narration)
+  // Room numbers scratched on walls (for puzzle C):
+  roomNums:{north:7,east:13,south:19}, // player finds these by inspecting walls
+};
+const TOTAL_STEPS=32;
+const WALLS=['NORTH WALL','EAST WALL','SOUTH WALL','WEST WALL'];
+const ARROW=['[ ↑ N ]','[ → E ]','[ ↓ S ]','[ ← W ]'];
+
+function narr(msg){document.getElementById('narr').textContent=msg.toUpperCase();}
+function addInv(item){if(S.inv.includes(item))return;S.inv.push(item);refreshInv();}
+function delInv(item){const i=S.inv.indexOf(item);if(i>-1)S.inv.splice(i,1);refreshInv();}
+function hasInv(item){return S.inv.includes(item);}
+function refreshInv(){
+  const el=document.getElementById('inv-row');
+  el.innerHTML='<span style="font-size:6px;color:var(--g4)">BAG:</span>';
+  S.inv.forEach(i=>{const c=document.createElement('div');c.className='chip';c.textContent=i;el.appendChild(c);});
+}
+function step(){
+  S.steps++;
+  document.getElementById('prog-fill').style.width=Math.min(100,~~(S.steps/TOTAL_STEPS*100))+'%';
+}
+function go(n){
+  S.facing=((n%4)+4)%4;
+  cursor=0;
   render();
 }
 
-// actions
-function actInspectPainting()  { state.flags.paintingChecked = true;  narrate("The painting is tilted. Something is taped to the back."); }
-function actMovePainting()     { state.flags.paintingMoved = true; state.flags.hasCode = true; addInv('SLIP'); narrate("Behind the painting: a slip of paper. Symbols: star=3, tri=7, square=1."); }
-function actUseKey()           { state.flags.keyUsed = true; narrate("The key turns. One deadbolt clears. The keypad blinks — needs a code."); }
-function actEnterCode()        { state.flags.doorUnlocked = true; state.timerActive = false; narrate("3-7-1. The keypad flashes green. The door groans OPEN."); }
-function actEscape()           {
-  state.done = true; state.timerActive = false;
-  const elapsed = 600 - state.timerLeft;
-  const m = Math.floor(elapsed/60), s = elapsed % 60;
-  narrate(`YOU ESCAPED! TIME: ${m}M ${String(s).padStart(2,'0')}S. WELL PLAYED.`);
-  setChoices([{ label:'Play Again?', act: () => location.reload() }]);
+// ══════════════════════════════════════════════════════
+//  PUZZLE CHAIN:
+//
+//  WEST  → inspect workbench → find fuse sequence note
+//          → PUZZLE D: enter total wattage 30
+//          → take FUSE-A, FUSE-B, FUSE-C
+//          → inspect mirror → hidden UV torch slot
+//          → inspect chemistry shelf → UV TORCH inside locked case
+//          → PUZZLE A unlocks cabinet latch code
+//            "circuit resistance (17x4)-33=35" → type 35 → cabinet opens → UV TORCH
+//          → find WALL SCRATCH "19" on west wall (memorise!)
+//
+//  EAST  → inspect desk → screwdriver + journal
+//          → journal: "base=12x3 offset=base/4 code=base+offset"
+//          → use computer (needs power) → PUZZLE C hint: "check all 3 room numbers"
+//          → find WALL SCRATCH "13" (memorise!)
+//          → install all 3 fuses in east fuse panel → power on
+//          → computer unlocks after power → shows safe instructions
+//
+//  SOUTH → scan bookshelf → find combo book + hidden compartment
+//          → compartment: small key + map (map shows "north room # = 7")
+//          → safe: PUZZLE B → enter 45 → keycard + wire cutters inside
+//          → wire cutters unlock east cabinet
+//          → find WALL SCRATCH "19" already noted (south confirms it)
+//          → floor grate (screwdriver) → KEYCARD CHIP inside
+//
+//  NORTH → insert keycard → insert chip
+//          → PUZZLE C: enter sum 7+13+19=39 on alarm panel
+//          → PUZZLE C accepted → pull lever → ESCAPE
+// ══════════════════════════════════════════════════════
+
+// ── NORTH ACTIONS ──────────────────────────────────────
+function nInspectDoor(){
+  if(!S.f.nDoor){S.f.nDoor=true;step();}
+  narr("VAULT DOOR: 3 stages — keycard slot, chip port, and an alarm keypad. All must clear. The number 7 is scratched on the left wall — write it down.");
+  S.f.northNum=true; // player sees "7"
 }
-function actSearchDesk()       { state.flags.deskSearched = true; narrate("Empty takeout boxes, a broken pen — and a crumpled note wedged at the back."); }
-function actReadNote()         { state.flags.noteRead = true; addInv('NOTE'); narrate("The note reads: 'The key is where answers live — behind shapes, inside the box.'"); }
-function actExamineBox()       {
-  if (!state.flags.hasBoxCombo) { narrate("Three symbol dials. You need the combination."); return; }
-  state.flags.boxOpen = true; narrate("Star-3, Tri-7, Square-1. CLICK. The box springs open!");
+function nSlotKeycard(){
+  if(!hasInv('KEYCARD')){narr("YOU NEED A KEYCARD. CHECK THE SOUTH SAFE.");return;}
+  delInv('KEYCARD');S.f.keycardIn=true;step();
+  narr("KEYCARD ACCEPTED. RED LIGHT TURNS AMBER. TWO LOCKS REMAIN.");render();
 }
-function actTakeKey()          { state.flags.hasKey = true; addInv('KEY'); narrate("You pocket the brass key. Cold and heavy."); }
-function actScanShelf()        { state.flags.shelfSearched = true; narrate("Most books are dummies. One spine is marked in paint: 'READ ME'."); }
-function actReadBook()         { state.flags.bookRead = true; narrate("Inside the cover: star, triangle, square — with numbers scratched beneath each."); }
-function actNoteCombination()  { state.flags.hasBoxCombo = true; narrate("Star=3, Tri=7, Square=1. You commit the code to memory."); }
-function actCheckMirror()      { state.flags.mirrorChecked = true; narrate("Your reflection stares back. The crack runs deep. Nothing behind it."); }
-function actCheckVent()        { state.flags.ventChecked = true; narrate("The vent pops off — just a dark shaft full of dust. Dead end."); }
-
-// ─── SCENE CHOICES ────────────────────────────
-const scenes = {
-  north: {
-    choices: () => {
-      const c = [];
-      if (!state.flags.paintingChecked) c.push({ label:'Inspect crooked painting', act: actInspectPainting });
-      if (state.flags.paintingChecked && !state.flags.paintingMoved) c.push({ label:'Lift painting off wall', act: actMovePainting });
-      if (state.flags.hasKey && !state.flags.keyUsed) c.push({ label:'Use key on door lock', act: actUseKey });
-      if (state.flags.keyUsed && !state.flags.doorUnlocked && state.flags.hasCode) c.push({ label:'Enter code 3-7-1 on keypad', act: actEnterCode });
-      if (state.flags.doorUnlocked) c.push({ label:'Escape through the door!', act: actEscape, escape: true });
-      return c;
-    }
-  },
-  east: {
-    choices: () => {
-      const c = [];
-      if (!state.flags.deskSearched) c.push({ label:'Search desk drawers', act: actSearchDesk });
-      if (state.flags.deskSearched && !state.flags.noteRead) c.push({ label:'Read crumpled note', act: actReadNote });
-      if (!state.flags.boxOpen) c.push({ label:'Examine locked box on desk', act: actExamineBox });
-      if (state.flags.boxOpen && !state.flags.hasKey) c.push({ label:'Take the key from box', act: actTakeKey });
-      return c;
-    }
-  },
-  south: {
-    choices: () => {
-      const c = [];
-      if (!state.flags.shelfSearched) c.push({ label:'Scan the bookshelf', act: actScanShelf });
-      if (state.flags.shelfSearched && !state.flags.bookRead) c.push({ label:'Pull the marked book', act: actReadBook });
-      if (state.flags.bookRead && !state.flags.hasBoxCombo) c.push({ label:'Note the symbol code', act: actNoteCombination });
-      return c;
-    }
-  },
-  west: {
-    choices: () => {
-      const c = [];
-      if (!state.flags.mirrorChecked) c.push({ label:'Look in cracked mirror', act: actCheckMirror });
-      if (!state.flags.ventChecked) c.push({ label:'Remove vent grate', act: actCheckVent });
-      if (state.flags.hasBoxCombo && !state.flags.boxOpen) c.push({ label:'Go to desk — try combination', act: () => { setFacing(1); narrate("You turn toward the desk."); } });
-      return c;
-    }
+function nInsertChip(){
+  if(!hasInv('CHIP')){narr("YOU NEED THE KEYCARD CHIP FROM THE SOUTH FLOOR GRATE.");return;}
+  delInv('CHIP');S.f.chipIn=true;step();
+  narr("CHIP SEATED. THE DOOR HUMS. ONE LOCK LEFT — THE ALARM PANEL CODE.");render();
+}
+function nAlarmPanel(){
+  if(!S.f.keycardIn||!S.f.chipIn){narr("THE ALARM PANEL IS INACTIVE. INSERT KEYCARD AND CHIP FIRST.");return;}
+  if(!S.f.powerOn){narr("NO POWER. RESTORE POWER FROM THE EAST FUSE PANEL FIRST.");return;}
+  if(S.f.alarmSolved){narr("ALARM CLEARED. PULL THE LEVER.");return;}
+  if(!S.f.northNum||!S.f.eastNum||!S.f.southNum){
+    narr("PANEL DEMANDS A CODE. THREE NUMBERS ARE SCRATCHED ON WALLS — NORTH(7), EAST(13), SOUTH(19). FIND THEM ALL FIRST.");return;
   }
-};
-
-// ─── DRAWING HELPERS ──────────────────────────
-
-// Shared room base: floor, ceiling, walls with pixel grid
-function drawRoomBase() {
-  // background wall
-  px(0, 0, W, H, C.black);
-
-  // wall (upper 65%)
-  const wallH = Math.round(H * 0.65);
-  px(0, 0, W, wallH, C.wall);
-
-  // pixel-art horizontal scanlines on wall
-  for (let y = 0; y < wallH; y += 8) {
-    px(0, y, W, 1, C.g1);
-  }
-
-  // floor (lower 35%)
-  px(0, wallH, W, H - wallH, C.floor);
-  // floor tiles (8x8 grid)
-  for (let x = 0; x < W; x += 16) {
-    for (let y = wallH; y < H; y += 8) {
-      if (((x/16)+(y/8)) % 2 === 0) px(x, y, 16, 8, '#050f05');
-      else px(x, y, 16, 8, '#081508');
+  openInput("ALARM CODE = SUM OF WALL NUMBERS 7, 13, 19. ENTER SUM:",(val,att)=>{
+    if(val===PUZZLES.C.answer){
+      S.f.alarmSolved=true;step();
+      narr("39 ACCEPTED! ALARM CLEARED. NOW PULL THE LEVER!");
+      return true;
     }
-  }
-
-  // wall-floor seam
-  px(0, wallH - 4, W, 4, C.g3);
-  px(0, wallH, W, 2, C.g4);
-
-  // ceiling strip
-  px(0, 0, W, 8, C.g3);
-  px(0, 8, W, 2, C.g4);
-
-  // corner perspective lines (pixel steps)
-  drawPixelLine(0, 0, 80, wallH, C.g2);
-  drawPixelLine(W, 0, W-80, wallH, C.g2);
-
-  // light bulb + glow at top center
-  px(W/2 - 4, 8, 8, 4, C.g6);   // cord
-  px(W/2 - 8, 12, 16, 12, C.g7); // bulb body
-  px(W/2 - 4, 24, 8, 4, C.g8);
-  // glow rays
-  for (let i = 0; i < 5; i++) {
-    const rx = W/2 - 24 + i*12;
-    px(rx, 28, 4, 2, C.g3);
-  }
+    return att>=3?PUZZLES.C.hint:'CHECK YOUR ADDITION.';
+  });
+}
+function nPullLever(){
+  if(!S.f.alarmSolved){narr("LEVER IS LOCKED. CLEAR THE ALARM PANEL FIRST.");return;}
+  S.f.escaped=true;S.timerOn=false;step();
+  const el=1200-S.timerLeft,m=~~(el/60),sec=el%60;
+  narr(`CLUNK! ALL LOCKS DISENGAGE! THE VAULT DOOR SWINGS OPEN! YOU ESCAPED IN ${m}M ${String(sec).padStart(2,'0')}S!`);
+  cursor=0;
+  renderMenu([{label:'>>> WALK OUT — YOU WIN! <<<',fn:()=>{
+    narr("CONGRATULATIONS. YOU SURVIVED THE ROOM.");
+    renderMenu([{label:'Play Again',fn:()=>location.reload()}]);
+  },esc:true}]);
 }
 
-// pixel-perfect Bresenham-ish step line
-function drawPixelLine(x0, y0, x1, y1, color) {
-  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
-  const steps = Math.max(dx, dy);
-  for (let i = 0; i <= steps; i += 4) {
-    const t = i / steps;
-    const x = Math.round(x0 + (x1 - x0) * t);
-    const y = Math.round(y0 + (y1 - y0) * t);
-    px(x, y, 4, 4, color);
-  }
+// ── EAST ACTIONS ───────────────────────────────────────
+function eInspectWall(){
+  if(!S.f.eastNum){S.f.eastNum=true;step();}
+  narr("SCRATCHED INTO THE EAST WALL: THE NUMBER 13. WRITE IT DOWN. YOU WILL NEED IT FOR THE ALARM CODE.");
 }
-
-// pixel text (use canvas font)
-function pixelText(text, x, y, color, size = 8) {
-  ctx.font = `${size}px 'Press Start 2P', monospace`;
-  ctx.fillStyle = color;
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillText(text, x, y);
+function eSearchDesk(){
+  if(S.f.deskDone)return narr("DESK SEARCHED. JOURNAL AND SCREWDRIVER STILL HERE IF NOT TAKEN.");
+  S.f.deskDone=true;step();
+  narr("UNDER STACKS OF PAPER: A LEATHER JOURNAL AND A FLATHEAD SCREWDRIVER. THE JOURNAL HAS A DOG-EARED PAGE.");
 }
-
-// ─── NORTH WALL ───────────────────────────────
-function drawNorth() {
-  drawRoomBase();
-
-  // DOOR  (center)
-  const dx = W/2 - 56, dy = 30, dw = 112, dh = 145;
-  px(dx, dy, dw, dh, C.g2);
-  px(dx, dy, dw, 4, C.g3); // top trim
-  px(dx, dy+dh, dw, 4, C.g3); // bottom trim
-  px(dx, dy, 4, dh, C.g3); // left trim
-  px(dx+dw-4, dy, 4, dh, C.g3); // right trim
-
-  // door panels (pixel art)
-  px(dx+8, dy+8, dw-16, 48, C.g1);
-  px(dx+8, dy+64, dw-16, 48, C.g1);
-  px(dx+12, dy+12, dw-24, 40, C.g2);
-  px(dx+12, dy+68, dw-24, 40, C.g2);
-
-  // door handle
-  const hcolor = state.flags.keyUsed ? C.g8 : C.g4;
-  px(dx+dw-20, dy+dh/2-8, 12, 16, hcolor);
-  px(dx+dw-24, dy+dh/2, 8, 8, hcolor);
-
-  // keypad (right of door)
-  const kx = dx+dw+16, ky = dy+40;
-  px(kx, ky, 44, 64, C.g1);
-  px(kx+2, ky+2, 40, 60, C.g2);
-  // LED
-  const ledCol = state.flags.doorUnlocked ? C.g9 : state.flags.keyUsed ? C.g6 : C.g4;
-  px(kx+14, ky+6, 16, 8, ledCol);
-  // keypad buttons (3x3)
-  for (let r = 0; r < 3; r++) for (let col2 = 0; col2 < 3; col2++) {
-    px(kx+4+col2*12, ky+18+r*12, 10, 8, C.g3);
-  }
-  pixelText(state.flags.doorUnlocked ? 'OPEN' : state.flags.keyUsed ? '?????' : 'LOCK', kx-2, ky+78, C.g5, 6);
-
-  // PAINTING (left of door, slightly tilted via pixel offset trick)
-  const px2 = dx - 110, py2 = 40;
-  if (!state.flags.paintingMoved) {
-    // tilted: stagger rows by 1px
-    for (let row = 0; row < 72; row++) {
-      const ox = Math.floor(row * 0.07);
-      px(px2 + ox, py2 + row, 88, 1, row < 4 || row > 68 || (row > 1 && row < 4) ? C.g4 : C.g2);
-    }
-    // frame
-    px(px2, py2, 88, 4, C.g4); px(px2, py2+68, 88, 4, C.g4);
-    px(px2, py2, 4, 72, C.g4); px(px2+84, py2, 4, 72, C.g4);
-    // lighthouse pixel art inside
-    drawLighthouse(px2+8, py2+8);
+function eTakeJournal(){addInv('JOURNAL');S.f.hasJournal=true;step();narr("JOURNAL TAKEN. READ IT — THE SAFE FORMULA IS INSIDE.");render();}
+function eTakeScrewdriver(){addInv('SCREWDRV');S.f.hasScrewdriver=true;step();narr("SCREWDRIVER TAKEN.");render();}
+function eReadJournal(){
+  if(!S.f.j1){
+    S.f.j1=true;step();
+    narr("JOURNAL P.12: 'SAFE FORMULA — BASE = 12 x 3. OFFSET = BASE / 4. CODE = BASE + OFFSET.' UNDERLINED TWICE.");
+  } else if(!S.f.j2){
+    S.f.j2=true;step();
+    narr("JOURNAL P.31: 'FUSE PANEL IS ON THE EAST WALL. THREE FUSES RESTORE POWER. CHECK WATTAGES BEFORE INSERTING.'");
   } else {
-    // painting leaning against wall
-    px(px2+4, py2+70, 88, 8, C.g3);
-    px(px2+8, py2+8, 80, 64, C.g2);
-    px(px2+8, py2+8, 80, 4, C.g4);
-    pixelText('(REMOVED)', px2+10, py2+50, C.g4, 6);
+    narr("JOURNAL: SAFE CODE FORMULA ON P.12. FUSE WARNING ON P.31. DO THE MATH YOURSELF.");
   }
 }
-
-function drawLighthouse(ox, oy) {
-  // sky
-  px(ox, oy, 72, 56, C.g1);
-  // sea
-  for (let x = 0; x < 72; x+=8) px(ox+x, oy+44, 8, 4, (x/8)%2===0?C.g3:C.g2);
-  // tower
-  px(ox+28, oy+12, 16, 36, C.g4);
-  px(ox+24, oy+8, 24, 8, C.g5);   // top
-  px(ox+26, oy+4, 20, 6, C.g6);   // light housing
-  // light beam
-  px(ox+30, oy+4, 4, 4, C.g9);
-  // windows
-  px(ox+30, oy+24, 8, 8, C.g2);
-  px(ox+30, oy+36, 8, 6, C.g2);
+function eFusePanel(){
+  if(S.f.fusePanelDone)return narr(`FUSE PANEL: SLOTS FILLED: ${S.f.fuseA?'A':'_'} ${S.f.fuseB?'B':'_'} ${S.f.fuseC?'C':'_'}. ${S.f.powerOn?'POWER ON!':'NEED ALL THREE.'}`);
+  S.f.fusePanelSeen=true;step();
+  narr("EAST WALL FUSE PANEL. THREE EMPTY SLOTS LABELLED A, B, C. FIND THE THREE FUSES. FIRST VERIFY THEIR TOTAL WATTAGE.");render();
 }
-
-// ─── EAST WALL ────────────────────────────────
-function drawEast() {
-  drawRoomBase();
-
-  // DESK
-  const tx = W/2-110, ty = Math.round(H*0.52);
-  px(tx, ty, 220, 12, C.g4);      // tabletop
-  px(tx, ty+2, 220, 4, C.g5);     // highlight edge
-  px(tx+8, ty+12, 16, 60, C.g3); // left leg
-  px(tx+196, ty+12, 16, 60, C.g3); // right leg
-  // drawer
-  px(tx+40, ty+14, 80, 32, C.g2);
-  px(tx+42, ty+16, 76, 28, C.g1);
-  px(tx+76, ty+28, 8, 8, C.g4);  // handle
-
-  // BOX ON DESK
-  const bx = tx+50, by = ty-44;
-  px(bx, by, 80, 44, C.g2);
-  px(bx, by, 80, 4, C.g4);
-  px(bx, by, 4, 44, C.g4);
-  px(bx+76, by, 4, 44, C.g4);
-  px(bx, by+40, 80, 4, C.g4);
-
-  if (!state.flags.boxOpen) {
-    // lock
-    px(bx+28, by+14, 24, 16, C.g3);
-    px(bx+34, by+8, 12, 8, C.g3);
-    px(bx+36, by+6, 8, 4, C.g0);
-    px(bx+38, by+14, 4, 8, C.g5);
-    // dials
-    pixelText('* ^ #', bx+8, by+36, C.g4, 7);
-  } else {
-    px(bx+4, by+4, 72, 36, '#001800');
-    pixelText('OPEN!', bx+14, by+26, C.g9, 8);
-    if (!state.flags.hasKey) {
-      // key inside
-      px(bx+30, by+30, 20, 8, C.g7);
-      px(bx+30, by+26, 8, 16, C.g7);
-      px(bx+30, by+26, 8, 4, C.g8);
-    }
-  }
-
-  // LAMP on desk
-  px(tx+188, ty-60, 8, 60, C.g3);
-  px(tx+168, ty-62, 32, 6, C.g4);
-  // glow
-  for (let gx = 0; gx < 5; gx++) px(tx+168+gx*6, ty-56, 6, 2, C.g2);
-
-  // NOTE on desk (after searched)
-  if (state.flags.deskSearched && !state.flags.noteRead) {
-    px(tx+140, ty-20, 28, 20, C.g3);
-    pixelText('?', tx+148, ty-6, C.g7, 9);
-  }
-}
-
-// ─── SOUTH WALL ───────────────────────────────
-function drawSouth() {
-  drawRoomBase();
-
-  // BOOKSHELF
-  const sx = W/2-160, sy = 10, sw = 320, sh = 160;
-  px(sx, sy, sw, sh, C.g2);
-  px(sx, sy, 8, sh, C.g3);
-  px(sx+sw-8, sy, 8, sh, C.g3);
-  px(sx, sy, sw, 8, C.g3);
-  px(sx, sy+sh-6, sw, 6, C.g3);
-
-  // shelf planks
-  const rows = 4;
-  const bookColors = [C.g3, C.g4, C.g5, C.g2, C.g3, C.g5, C.g4, C.g3, C.g2, C.g5, C.g4, C.g3];
-  for (let r = 0; r < rows; r++) {
-    const rowY = sy + 8 + r * 38;
-    px(sx+4, rowY+32, sw-8, 4, C.g4); // shelf plank
-    // books
-    let bx2 = sx+10;
-    for (let b = 0; b < 12; b++) {
-      const bw = 16 + (b % 3)*4;
-      const bh = 20 + (b % 4)*4;
-      if (bx2 + bw > sx+sw-8) break;
-      // highlighted "READ ME" book
-      if (r === 1 && b === 5 && !state.flags.bookRead) {
-        px(bx2, rowY+32-bh, bw, bh, C.g7);
-        px(bx2+2, rowY+32-bh+2, bw-4, 4, C.g9);
-      } else {
-        px(bx2, rowY+32-bh, bw, bh, bookColors[(r*12+b)%bookColors.length]);
-        // spine line
-        px(bx2+2, rowY+32-bh+4, 2, bh-8, C.g2);
-      }
-      bx2 += bw + 2;
-    }
-  }
-}
-
-// ─── WEST WALL ────────────────────────────────
-function drawWest() {
-  drawRoomBase();
-
-  // MIRROR (center-ish)
-  const mx = W/2-70, my = 20, mw = 100, mh = 140;
-  // frame
-  px(mx, my, mw, mh, C.g3);
-  px(mx+6, my+6, mw-12, mh-12, C.g1);
-  // frame details
-  for (let i=0;i<3;i++) {
-    px(mx+i*2, my+i*2, mw-i*4, 4, C.g4);
-    px(mx+i*2, my+mh-i*4-4, mw-i*4, 4, C.g4);
-  }
-  // reflection tint
-  px(mx+8, my+8, mw-16, mh-16, '#020f02');
-  // pixel silhouette in mirror
-  px(mx+38, my+30, 24, 20, C.g3); // head
-  px(mx+34, my+50, 32, 50, C.g2); // body
-  px(mx+30, my+100, 12, 28, C.g2); // leg L
-  px(mx+50, my+100, 12, 28, C.g2); // leg R
-  // crack lines
-  ctx.strokeStyle = C.g6;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2,3]);
-  ctx.beginPath();
-  ctx.moveTo(mx+mw*0.7, my+4);
-  ctx.lineTo(mx+mw, my+mh*0.45);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(mx+mw*0.7, my+4);
-  ctx.lineTo(mx+mw*0.4, my+mh*0.35);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // VENT (lower-right)
-  const vx = W/2+100, vy = Math.round(H*0.45);
-  px(vx, vy, 80, 60, C.g1);
-  px(vx+2, vy+2, 76, 56, C.g2);
-  if (!state.flags.ventChecked) {
-    // grate bars
-    for (let i = 0; i < 6; i++) px(vx+4, vy+4+i*9, 72, 5, C.g3);
-    for (let i = 0; i < 4; i++) px(vx+4+i*18, vy+4, 4, 52, C.g4);
-    // corner screws
-    px(vx+4,vy+4,4,4,C.g5); px(vx+72,vy+4,4,4,C.g5);
-    px(vx+4,vy+52,4,4,C.g5); px(vx+72,vy+52,4,4,C.g5);
-  } else {
-    // vent open
-    px(vx+4, vy+4, 72, 52, C.black);
-    pixelText('EMPTY', vx+6, vy+34, C.g3, 6);
-  }
-
-  // TABLE (left)
-  const tabX = W/2-190, tabY = Math.round(H*0.55);
-  px(tabX, tabY, 100, 10, C.g4);
-  px(tabX+4, tabY+10, 12, 50, C.g3);
-  px(tabX+84, tabY+10, 12, 50, C.g3);
-  // lamp on table
-  px(tabX+44, tabY-48, 8, 48, C.g3);
-  px(tabX+28, tabY-52, 40, 6, C.g5);
-  // glow
-  px(tabX+30, tabY-46, 36, 4, C.g2);
-}
-
-// ─── MAIN RENDER ──────────────────────────────
-function render() {
-  const key = ['north','east','south','west'][state.facing];
-  document.getElementById('facing-label').textContent = ARROW[state.facing];
-
-  ctx.clearRect(0, 0, W, H);
-
-  if (key === 'north') drawNorth();
-  else if (key === 'east') drawEast();
-  else if (key === 'south') drawSouth();
-  else drawWest();
-
-  const choices = scenes[key].choices();
-  setChoices(choices);
-}
-
-// ─── KEYBOARD ─────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (state.done) return;
-  const k = e.key.toLowerCase();
-  if (k === 'a') { setFacing(state.facing - 1); }
-  if (k === 'd') { setFacing(state.facing + 1); }
-});
-
-// ─── TIMER ────────────────────────────────────
-const timerEl = document.getElementById('timer');
-setInterval(() => {
-  if (!state.timerActive) return;
-  state.timerLeft--;
-  if (state.timerLeft <= 0) {
-    state.timerActive = false; state.done = true;
-    narrate("TIME'S UP. THE ROOM WINS.");
-    setChoices([{ label:'Try Again?', act: () => location.reload() }]);
+function eInsertFuse(name,slot){
+  if(!S.f.fuseLoadVerified){
+    narr("STOP. VERIFY TOTAL FUSE WATTAGE FIRST (FUSE NOTE ON WEST WORKBENCH). WRONG LOAD WILL BLOW THE PANEL.");
     return;
   }
-  const m = Math.floor(state.timerLeft / 60);
-  const s = state.timerLeft % 60;
-  timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
-  if (state.timerLeft <= 60) timerEl.className = 'timer warn';
-  else if (state.timerLeft <= 180) timerEl.style.color = 'var(--g6)';
-}, 1000);
+  delInv(name);S.f[slot]=true;step();
+  if(S.f.fuseA&&S.f.fuseB&&S.f.fuseC){
+    S.f.powerOn=true;S.f.fusePanelDone=true;step();
+    narr("ALL FUSES IN! POWER RESTORED! THE COMPUTER TERMINAL FLICKERS ON. ALSO THE VAULT DOOR SYSTEMS ACTIVATE.");
+  } else {
+    narr(`${name} INSERTED. ${3-[S.f.fuseA,S.f.fuseB,S.f.fuseC].filter(Boolean).length} MORE NEEDED.`);
+  }
+  render();
+}
+function eUseComputer(){
+  if(!S.f.powerOn)return narr("TERMINAL IS DARK. RESTORE POWER AT THE EAST FUSE PANEL FIRST.");
+  if(!S.f.pcUsed){
+    S.f.pcUsed=true;step();
+    narr("TERMINAL BOOTS. LOG: 'MERIDIAN CORP PANIC ROOM v3. ALARM CODE = SUM OF ROOM NUMBERS. CHECK ALL THREE WALLS.' ALSO: 'WIRE CUTTERS IN SOUTH SAFE.'");
+  } else {
+    narr("TERMINAL: ALARM CODE = SUM OF 3 WALL NUMBERS (SCRATCHED ON NORTH, EAST, SOUTH WALLS). WIRE CUTTERS ARE IN THE SOUTH SAFE.");
+  }
+}
+function eInspectCabinet(){
+  if(S.f.cabOpen)return narr("CABINET IS OPEN. YOU ALREADY TOOK WHAT WAS INSIDE.");
+  if(!S.f.cabSeen){S.f.cabSeen=true;step();}
+  narr("METAL CABINET ON EAST WALL. NEEDS WIRE CUTTERS TO SNIP THE LOCKING CABLES. GET THEM FROM THE SOUTH SAFE.");
+}
+function eOpenCabinet(){
+  if(!hasInv('WIRE CUTS'))return narr("YOU NEED WIRE CUTTERS. THEY ARE IN THE SOUTH SAFE.");
+  delInv('WIRE CUTS');S.f.cabOpen=true;step();
+  narr("CABLES SNIPPED! CABINET OPEN. INSIDE: UV TORCH AND THE WEST WORKBENCH KEY.");render();
+}
+function eTakeUVTorch(){addInv('UV TORCH');S.f.hasUV=true;step();narr("UV TORCH TAKEN. SHINE IT ON WALLS AND OBJECTS TO REVEAL HIDDEN MARKINGS.");render();}
+function eTakeWBKey(){addInv('WB KEY');S.f.hasWBKey=true;step();narr("WORKBENCH KEY TAKEN. UNLOCKS THE WEST DRAWERS.");render();}
 
-// ─── INIT ─────────────────────────────────────
+// ── SOUTH ACTIONS ──────────────────────────────────────
+function sInspectWall(){
+  if(!S.f.southNum){S.f.southNum=true;step();}
+  narr("SCRATCHED INTO THE SOUTH WALL BEHIND THE SHELF: 19. ALL THREE ROOM NUMBERS: NORTH=7, EAST=13, SOUTH=19. REMEMBER THEM.");
+}
+function sScanShelf(){
+  if(S.f.shelfScanned)return narr("SHELF: THREE SYMBOL BOOKS (STAR, TRI, SQ) ON ROW 2. PULL THEM FOR THE COMPARTMENT.");
+  S.f.shelfScanned=true;step();
+  narr("BOOKSHELF: MOSTLY PROPS. THREE BOOKS ON ROW 2 HAVE SYMBOLS ON THEIR SPINES. SOMETHING FEELS OFF ABOUT THAT SECTION.");
+}
+function sUVShelf(){
+  if(!hasInv('UV TORCH'))return narr("NEED A UV TORCH. GET IT FROM THE EAST CABINET AFTER OPENING WITH WIRE CUTTERS.");
+  if(!S.f.uvShelf){S.f.uvShelf=true;step();}
+  narr("UV LIGHT REVEALS WRITING ON WALL: 'SAFE CODE = BASE + OFFSET. CHECK JOURNAL.' AND BELOW: 'THE NUMBER IS 45.'");
+  S.f.uvConfirm=true; // extra confirmation of safe answer
+}
+function sPullBooks(){
+  if(!S.f.shelfScanned)return narr("SCAN THE SHELF FIRST.");
+  if(S.f.booksPulled)return narr("COMPARTMENT IS ALREADY OPEN.");
+  S.f.booksPulled=true;step();
+  narr("CLICK! A HIDDEN COMPARTMENT OPENS. INSIDE: A SMALL KEY AND A FOLDED MAP.");render();
+}
+function sTakeKey(){addInv('SMALL KEY');S.f.hasSmallKey=true;step();narr("SMALL KEY TAKEN. FITS SOMETHING ON THE WEST WALL.");render();}
+function sReadMap(){
+  if(S.f.mapRead)return narr("MAP: X MARKS FLOOR GRATE SOUTH-EAST. 'CHIP IS IN THE CRAWLSPACE.' AND: 'CHECK NORTH WALL FOR THE NUMBER 7.'");
+  S.f.mapRead=true;step();
+  narr("MAP: AN X MARKS THE SOUTH FLOOR GRATE. HANDWRITTEN: 'CHIP IS IN THE CRAWLSPACE BELOW.' AND: 'NORTH WALL HAS A NUMBER TOO.'");
+}
+function sInspectSafe(){
+  if(S.f.safeSeen)return narr(`WALL SAFE. 2-DIGIT CODE REQUIRED. CURRENT INPUT: ${S.f.safeInput||'NONE'}. FORMULA IN JOURNAL P.12.`);
+  S.f.safeSeen=true;step();
+  narr("A RECESSED WALL SAFE WITH A NUMERIC KEYPAD. A PLATE READS: 'FORMULA AUTHORISED PERSONNEL ONLY.' YOU NEED A 2-DIGIT CODE.");
+}
+function sTrySafe(){
+  if(!S.f.safeSeen)return narr("INSPECT THE SAFE FIRST.");
+  openInput("SAFE CODE (FORMULA: BASE=12x3, OFFSET=BASE/4, CODE=BASE+OFFSET):",(val,att)=>{
+    S.f.safeInput=val;
+    if(val===PUZZLES.B.answer){
+      S.f.safeOpen=true;step();
+      narr("45 CORRECT! SAFE OPEN! KEYCARD AND WIRE CUTTERS INSIDE!");
+      return true;
+    }
+    return att>=3?PUZZLES.B.hint:'WRONG CODE. RECHECK THE JOURNAL FORMULA.';
+  });
+}
+function sTakeKeycard(){addInv('KEYCARD');S.f.hasKeycard=true;step();narr("KEYCARD TAKEN. INSERT INTO NORTH VAULT DOOR.");render();}
+function sTakeWireCuts(){addInv('WIRE CUTS');S.f.hasWireCuts=true;step();narr("WIRE CUTTERS TAKEN. USE ON EAST WALL CABINET.");render();}
+function sOpenGrate(){
+  if(!hasInv('SCREWDRV'))return narr("THE GRATE BOLTS NEED A SCREWDRIVER. CHECK THE EAST DESK.");
+  if(S.f.grateOpen)return narr("GRATE ALREADY OPEN. CHIP WAS INSIDE.");
+  S.f.grateOpen=true;step();
+  narr("GRATE UNSCREWED! A CRAWLSPACE. YOU REACH IN AND PULL OUT A SMALL CIRCUIT CHIP — THE KEYCARD CHIP!");render();
+}
+function sTakeChip(){addInv('CHIP');S.f.hasChip=true;step();narr("CHIP TAKEN. INSERT INTO THE NORTH VAULT DOOR CHIP PORT.");render();}
+
+// ── WEST ACTIONS ───────────────────────────────────────
+function wInspectWall(){
+  if(!S.f.westNum){S.f.westNum=true;}
+  narr("ON THE WEST WALL NEAR THE VENT: SCRATCH MARKS. ONE SAYS '19'. THIS MATCHES THE SOUTH WALL NUMBER — BOTH CONFIRM IT.");
+  // west wall also confirms south number visually
+}
+function wInspectBench(){
+  if(S.f.benchSeen)return narr("WORKBENCH: FUSE NOTE GIVES WATTAGES. LOCKED DRAWER HAS FUSES A AND B. SMALL LOCKED BOX HAS FUSE C.");
+  S.f.benchSeen=true;step();
+  narr("CLUTTERED WORKBENCH. A TYPED NOTE IS TAPED DOWN. A LOCKED DRAWER. AND A SMALL LOCKED METAL BOX.");
+}
+function wReadFuseNote(){
+  if(S.f.fuseNoteRead)return narr("FUSE NOTE: FUSE-A=6W, FUSE-B=9W, FUSE-C=15W. VERIFY TOTAL BEFORE INSERTING. DO THE MATH.");
+  S.f.fuseNoteRead=true;step();
+  narr("FUSE NOTE: 'FUSE-A: 6W. FUSE-B: 9W. FUSE-C: 15W. TOTAL LOAD MUST BE VERIFIED BEFORE INSERTING OR YOU WILL BLOW THE PANEL.' CALCULATE THE TOTAL.");
+}
+function wVerifyFuseLoad(){
+  if(!S.f.fuseNoteRead)return narr("READ THE FUSE NOTE ON THE WORKBENCH FIRST.");
+  if(S.f.fuseLoadVerified)return narr("LOAD ALREADY VERIFIED: 30W. SAFE TO INSERT FUSES IN EAST PANEL.");
+  openInput("VERIFY TOTAL FUSE LOAD: 6W + 9W + 15W = ? (ENTER NUMBER):",(val,att)=>{
+    if(val===PUZZLES.D.answer){
+      S.f.fuseLoadVerified=true;step();
+      narr("30W CONFIRMED. SAFE TO INSERT FUSES. NOW UNLOCK THE DRAWER AND BOX TO GET THEM.");
+      return true;
+    }
+    return att>=3?PUZZLES.D.hint:'WRONG. ADD THE THREE WATTAGES.';
+  });
+}
+function wOpenDrawer(){
+  if(!hasInv('WB KEY')&&!hasInv('SMALL KEY')){narr("DRAWER IS LOCKED. YOU NEED A KEY. CHECK SOUTH COMPARTMENT OR EAST CABINET.");return;}
+  if(S.f.drawerOpen)return narr("DRAWER ALREADY OPEN. FUSE-A AND FUSE-B INSIDE IF NOT TAKEN.");
+  // small key from south OR WB key from east cabinet both work
+  if(hasInv('SMALL KEY'))delInv('SMALL KEY');
+  else delInv('WB KEY');
+  S.f.drawerOpen=true;step();
+  narr("DRAWER OPEN! FUSE-A AND FUSE-B INSIDE. ALSO A SCRAP: 'FUSE-C IS IN THE LOCKED BOX. RESISTANCE FORMULA OPENS IT.'");render();
+}
+function wTakeFuseA(){addInv('FUSE-A');S.f.hasFuseAItem=true;step();narr("FUSE-A (6W) TAKEN.");render();}
+function wTakeFuseB(){addInv('FUSE-B');S.f.hasFuseBItem=true;step();narr("FUSE-B (9W) TAKEN.");render();}
+function wInspectLockedBox(){
+  if(S.f.boxOpen)return narr("BOX IS OPEN. FUSE-C WAS INSIDE.");
+  if(!S.f.boxSeen){S.f.boxSeen=true;step();}
+  narr("A SMALL METAL BOX WITH A 2-DIGIT COMBINATION LOCK. A LABEL: 'RESISTANCE FORMULA. (17 x 4) - 33. ENTER RESULT.'");
+}
+function wOpenBox(){
+  if(!S.f.boxSeen)return narr("INSPECT THE LOCKED BOX FIRST.");
+  openInput("BOX CODE: (17 x 4) - 33 = ? ENTER THE ANSWER:",(val,att)=>{
+    if(val===PUZZLES.A.answer){
+      S.f.boxOpen=true;step();
+      narr("35 CORRECT! BOX OPEN! FUSE-C INSIDE!");
+      return true;
+    }
+    return att>=3?PUZZLES.A.hint:'WRONG. REMEMBER ORDER OF OPERATIONS: MULTIPLY FIRST.';
+  });
+}
+function wTakeFuseC(){addInv('FUSE-C');S.f.hasFuseCItem=true;step();narr("FUSE-C (15W) TAKEN. NOW HEAD TO THE EAST FUSE PANEL.");render();}
+function wInspectMirror(){
+  if(S.f.mirrorSeen)return narr("CRACKED MIRROR. YOUR REFLECTION LOOKS AWFUL. THE UV TORCH REVEALS SOMETHING IF YOU HAVE IT.");
+  S.f.mirrorSeen=true;step();
+  narr("A CRACKED MIRROR. SOMETHING FAINT IS DRAWN ON IT IN INVISIBLE INK. YOU WOULD NEED A UV TORCH TO SEE IT.");
+}
+function wUVMirror(){
+  if(!hasInv('UV TORCH'))return narr("NO UV TORCH. GET IT FROM THE EAST CABINET.");
+  if(S.f.uvMirror)return narr("UV MIRROR MESSAGE: 'CHIP IS UNDER THE SOUTH FLOOR — USE SCREWDRIVER ON GRATE.'");
+  S.f.uvMirror=true;step();
+  narr("UV LIGHT ON MIRROR: GLOWING TEXT — 'THE CHIP IS UNDER THE SOUTH FLOOR. UNSCREW THE FLOOR GRATE.' IMPORTANT!");
+}
+function wToggleUV(){
+  if(!hasInv('UV TORCH'))return narr("NO UV TORCH YET.");
+  S.uvOn=!S.uvOn;narr(S.uvOn?"UV TORCH ON.":"UV TORCH OFF.");render();
+}
+
+// ── SCENES ─────────────────────────────────────────────
+const SCENES={
+  north:{opts:()=>{
+    const o=[];
+    o.push({label:'Examine vault door',fn:nInspectDoor});
+    if(S.f.nDoor) o.push({label:'Inspect scratched number on wall (7)',fn:()=>{S.f.northNum=true;narr("NORTH WALL SCRATCH: THE NUMBER 7. REMEMBER: 7, AND FIND 13 ON EAST, 19 ON SOUTH.");}});
+    if(hasInv('KEYCARD')&&!S.f.keycardIn) o.push({label:'Insert keycard into door slot',fn:nSlotKeycard});
+    if(hasInv('CHIP')&&!S.f.chipIn) o.push({label:'Insert chip into door port',fn:nInsertChip});
+    if((S.f.keycardIn||S.f.chipIn)) o.push({label:'Use alarm panel (needs power + all wall numbers)',fn:nAlarmPanel});
+    if(S.f.alarmSolved) o.push({label:'PULL THE LEVER',fn:nPullLever,hot:true});
+    return o;
+  }},
+  east:{opts:()=>{
+    const o=[];
+    o.push({label:'Examine east wall (scratch marks)',fn:eInspectWall});
+    o.push({label:'Search the desk',fn:eSearchDesk});
+    if(S.f.deskDone&&!S.f.hasJournal) o.push({label:'Take leather journal',fn:eTakeJournal});
+    if(S.f.deskDone&&!S.f.hasScrewdriver) o.push({label:'Take screwdriver',fn:eTakeScrewdriver});
+    if(S.f.hasJournal) o.push({label:'Read journal',fn:eReadJournal});
+    o.push({label:'Inspect east fuse panel',fn:eFusePanel});
+    if(S.f.fusePanelSeen&&!S.f.fuseLoadVerified) o.push({label:'[!] Must verify fuse load first (go to west workbench)',fn:()=>narr("BEFORE INSERTING FUSES, READ THE FUSE NOTE ON THE WEST WORKBENCH AND VERIFY TOTAL WATTAGE.")});
+    if(S.f.fusePanelSeen&&S.f.fuseLoadVerified){
+      if(hasInv('FUSE-A')&&!S.f.fuseA) o.push({label:'Insert FUSE-A (6W) into panel slot A',fn:()=>eInsertFuse('FUSE-A','fuseA')});
+      if(hasInv('FUSE-B')&&!S.f.fuseB) o.push({label:'Insert FUSE-B (9W) into panel slot B',fn:()=>eInsertFuse('FUSE-B','fuseB')});
+      if(hasInv('FUSE-C')&&!S.f.fuseC) o.push({label:'Insert FUSE-C (15W) into panel slot C',fn:()=>eInsertFuse('FUSE-C','fuseC')});
+    }
+    o.push({label:'Use computer terminal',fn:eUseComputer});
+    o.push({label:'Inspect metal cabinet',fn:eInspectCabinet});
+    if(S.f.cabSeen&&!S.f.cabOpen) o.push({label:'Cut cabinet lock cables (need wire cutters)',fn:eOpenCabinet});
+    if(S.f.cabOpen&&!S.f.hasUV) o.push({label:'Take UV torch from cabinet',fn:eTakeUVTorch});
+    if(S.f.cabOpen&&!S.f.hasWBKey) o.push({label:'Take workbench key from cabinet',fn:eTakeWBKey});
+    if(hasInv('UV TORCH')) o.push({label:S.uvOn?'Turn UV torch OFF':'Turn UV torch ON',fn:()=>{S.uvOn=!S.uvOn;narr(S.uvOn?"UV ON.":"UV OFF.");render();}});
+    return o;
+  }},
+  south:{opts:()=>{
+    const o=[];
+    o.push({label:'Inspect south wall (look for markings)',fn:sInspectWall});
+    o.push({label:'Scan bookshelf',fn:sScanShelf});
+    if(hasInv('UV TORCH')) o.push({label:'Shine UV torch on bookshelf wall',fn:sUVShelf});
+    if(S.f.shelfScanned) o.push({label:'Pull the three symbol books',fn:sPullBooks});
+    if(S.f.booksPulled&&!S.f.hasSmallKey) o.push({label:'Take small key from compartment',fn:sTakeKey});
+    if(S.f.booksPulled&&!S.f.mapRead) o.push({label:'Read folded map from compartment',fn:sReadMap});
+    o.push({label:'Inspect wall safe',fn:sInspectSafe});
+    if(S.f.safeSeen&&!S.f.safeOpen) o.push({label:'Enter safe code (math puzzle)',fn:sTrySafe,hot:true});
+    if(S.f.safeOpen&&!S.f.hasKeycard) o.push({label:'Take keycard from safe',fn:sTakeKeycard});
+    if(S.f.safeOpen&&!S.f.hasWireCuts) o.push({label:'Take wire cutters from safe',fn:sTakeWireCuts});
+    o.push({label:'Examine floor grate',fn:sOpenGrate});
+    if(S.f.grateOpen&&!S.f.hasChip) o.push({label:'Reach in crawlspace — take chip',fn:sTakeChip});
+    if(hasInv('UV TORCH')) o.push({label:S.uvOn?'Turn UV torch OFF':'Turn UV torch ON',fn:()=>{S.uvOn=!S.uvOn;narr(S.uvOn?"UV ON.":"UV OFF.");render();}});
+    return o;
+  }},
+  west:{opts:()=>{
+    const o=[];
+    o.push({label:'Inspect west wall (look for markings)',fn:wInspectWall});
+    o.push({label:'Inspect workbench',fn:wInspectBench});
+    if(S.f.benchSeen) o.push({label:'Read fuse note on workbench',fn:wReadFuseNote});
+    if(S.f.fuseNoteRead) o.push({label:'Verify fuse total wattage (math)',fn:wVerifyFuseLoad,hot:true});
+    if(S.f.fuseLoadVerified) o.push({label:'Open locked workbench drawer (needs key)',fn:wOpenDrawer});
+    if(S.f.drawerOpen&&!S.f.hasFuseAItem) o.push({label:'Take FUSE-A (6W)',fn:wTakeFuseA});
+    if(S.f.drawerOpen&&!S.f.hasFuseBItem) o.push({label:'Take FUSE-B (9W)',fn:wTakeFuseB});
+    o.push({label:'Inspect locked metal box',fn:wInspectLockedBox});
+    if(S.f.boxSeen&&!S.f.boxOpen) o.push({label:'Enter box code (math puzzle)',fn:wOpenBox,hot:true});
+    if(S.f.boxOpen&&!S.f.hasFuseCItem) o.push({label:'Take FUSE-C (15W)',fn:wTakeFuseC});
+    o.push({label:'Inspect cracked mirror',fn:wInspectMirror});
+    if(S.f.mirrorSeen&&hasInv('UV TORCH')&&!S.f.uvMirror) o.push({label:'Shine UV on mirror',fn:wUVMirror});
+    if(hasInv('UV TORCH')) o.push({label:S.uvOn?'Turn UV torch OFF':'Turn UV torch ON',fn:wToggleUV});
+    return o;
+  }},
+};
+
+// ══════════════════════════════════════════════════════
+//  DRAWING  (pixel-art, black + green only)
+// ══════════════════════════════════════════════════════
+
+function drawBase(){
+  px(0,0,W,H,C.bk);
+  const wH=~~(H*.65);
+  px(0,0,W,wH,'#0a160a');
+  for(let y=0;y<wH;y+=8)px(0,y,W,1,'#0b1b0b');
+  for(let x=0;x<W;x+=16)for(let y=wH;y<H;y+=8)
+    px(x,y,16,8,((x/16+y/8)&1)?'#071207':'#050e05');
+  px(0,wH-4,W,4,C.g3);px(0,wH,W,2,C.g4);
+  px(0,0,W,8,C.g3);px(0,8,W,2,C.g4);
+  line(0,0,80,wH,C.g2);line(W,0,W-80,wH,C.g2);
+  // bulb
+  if(S.f.powerOn){px(W/2-5,8,10,4,C.g7);px(W/2-9,12,18,12,C.g8);for(let i=0;i<7;i++)px(W/2-24+i*8,26,5,3,C.g3);}
+  else{px(W/2-5,8,10,4,C.g3);px(W/2-9,12,18,12,C.g4);}
+}
+
+function drawNorth(){
+  drawBase();const wH=~~(H*.65);
+  // VAULT DOOR
+  const dx=W/2-68,dy=18,dw=136,dh=wH-18;
+  px(dx,dy,dw,dh,C.g2);
+  for(let i=0;i<3;i++){px(dx+6,dy+18+i*46,12,12,C.g3);px(dx+dw-18,dy+18+i*46,12,12,C.g3);}
+  px(dx,dy,dw,6,C.g4);px(dx,dy+dh-6,dw,6,C.g4);
+  px(dx,dy,6,dh,C.g4);px(dx+dw-6,dy,6,dh,C.g4);
+  px(dx+10,dy+10,dw-20,54,C.g1);px(dx+10,dy+72,dw-20,54,C.g1);
+  px(dx+14,dy+14,dw-28,46,C.g2);px(dx+14,dy+76,dw-28,46,C.g2);
+  // handle
+  const hc=S.f.keycardIn?C.g8:C.g4;
+  px(dx+dw-24,dy+dh/2-12,16,24,hc);px(dx+dw-28,dy+dh/2,12,10,hc);
+  pt(S.f.escaped?'OPEN!':S.f.alarmSolved?'READY':'SEALED',dx+~~(dw/2)-32,dy+~~(dh/2)+8,S.f.escaped?C.g9:C.g5,8);
+  // KEYCARD READER
+  const kr=S.f.keycardIn?C.g9:C.g4;
+  px(dx-58,dy+26,44,18,C.g1);px(dx-56,dy+28,40,14,kr);
+  pt('KEYCARD',dx-56,dy+56,C.g4,6);
+  // CHIP PORT
+  const cp=S.f.chipIn?C.g9:C.g3;
+  px(dx-58,dy+70,44,14,C.g1);px(dx-56,dy+72,40,10,cp);
+  pt('CHIP',dx-50,dy+96,C.g4,6);
+  // KEYPAD
+  const kx=dx+dw+12,ky=dy+26;
+  px(kx,ky,54,86,C.g1);px(kx+3,ky+3,48,80,C.g2);
+  const lc=S.f.alarmSolved?C.g9:S.f.powerOn?C.g6:C.g3;
+  px(kx+17,ky+8,20,12,lc);
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)px(kx+6+c*14,ky+26+r*16,12,12,C.g3);
+  pt(S.f.alarmSolved?'OK':'LOCK',kx+12,ky+80,C.g5,6);
+  // LEVER
+  const lx=dx+dw+82,ly=dy+36;
+  px(lx,ly,24,68,C.g2);px(lx+3,ly+3,18,62,C.g3);
+  const lhy=S.f.alarmSolved?ly+44:ly+4;
+  px(lx+8,lhy,8,24,S.f.alarmSolved?C.g9:C.g5);
+  pt('LEVER',lx-2,ly+78,C.g4,6);
+  // wall scratch "7"
+  if(S.f.nDoor){px(dx-100,dy+100,30,30,C.g1);pt('7',dx-90,dy+124,S.f.northNum?C.g9:C.g5,16);}
+}
+
+function drawEast(){
+  drawBase();const wH=~~(H*.65);
+  // wall scratch "13"
+  px(W-50,50,38,30,C.g1);pt('13',W-46,74,S.f.eastNum?C.g9:C.g4,14);
+  // DESK
+  const tx=W/2-126,ty=~~(H*.5);
+  px(tx,ty,252,12,C.g4);px(tx,ty+2,252,4,C.g5);
+  px(tx+6,ty+12,20,wH-ty-14,C.g3);px(tx+226,ty+12,20,wH-ty-14,C.g3);
+  px(tx+40,ty+14,110,36,C.g2);px(tx+42,ty+16,106,32,C.g1);px(tx+88,ty+30,14,8,C.g4);
+  if(S.f.deskDone&&!S.f.hasScrewdriver){px(tx+170,ty-8,6,30,C.g5);px(tx+168,ty-8,10,8,C.g7);}
+  if(S.f.deskDone&&!S.f.hasJournal){px(tx+60,ty-24,36,20,C.g4);px(tx+62,ty-22,32,16,C.g5);pt('J',tx+72,ty-8,C.g9,9);}
+  // TERMINAL
+  const cx=tx+6,cy=ty-96;
+  px(cx,cy,118,86,C.g2);px(cx+4,cy+4,110,74,S.f.powerOn?C.g1:'#050d05');
+  if(S.f.powerOn){pt('>_',cx+10,cy+26,C.g9,8);pt(S.f.pcUsed?'ALARM=SUM':'BOOTING..',cx+8,cy+48,C.g7,7);pt('MERIDIAN',cx+10,cy+66,C.g4,7);}
+  else pt('NO POWER',cx+14,cy+48,C.g3,7);
+  px(cx+32,cy+86,54,8,C.g3);
+  // FUSE PANEL
+  const fx=tx+220,fy=26;
+  px(fx,fy,90,100,C.g1);px(fx+3,fy+3,84,94,C.g2);
+  const fa=[S.f.fuseA,S.f.fuseB,S.f.fuseC];
+  for(let i=0;i<3;i++){
+    const c=fa[i]?C.g9:C.g3;
+    px(fx+8,fy+10+i*28,74,22,C.g1);px(fx+10,fy+12+i*28,70,18,c);
+    pt(`F${['A','B','C'][i]}:${fa[i]?'IN':'--'}`,fx+12,fy+25+i*28,fa[i]?C.g9:C.g4,7);
+  }
+  pt(S.f.powerOn?'PWR:ON':'PWR:OFF',fx+12,fy+95,S.f.powerOn?C.g9:C.g4,6);
+  // CABINET
+  const cabX=W-110,cabY=18;
+  px(cabX,cabY,98,wH-28,C.g2);
+  px(cabX,cabY,98,6,C.g4);px(cabX,cabY,6,wH-28,C.g4);
+  px(cabX+92,cabY,6,wH-28,C.g4);px(cabX,cabY+wH-34,98,6,C.g4);
+  if(!S.f.cabOpen){
+    px(cabX+30,cabY+60,38,26,C.g3);px(cabX+42,cabY+50,14,14,C.g3);px(cabX+46,cabY+48,6,6,C.bk);
+    pt('LOCKED',cabX+16,cabY+108,C.g4,6);
+  } else {
+    px(cabX+4,cabY+8,90,wH-42,C.bk);
+    if(!S.f.hasUV){px(cabX+16,cabY+26,32,14,C.g6);px(cabX+16,cabY+40,12,26,C.g6);pt('UV',cabX+18,cabY+44,C.g9,7);}
+    if(!S.f.hasWBKey){px(cabX+56,cabY+28,28,14,C.g7);px(cabX+58,cabY+28,24,10,C.g8);pt('KEY',cabX+58,cabY+52,C.g9,7);}
+    pt('OPEN!',cabX+24,cabY+108,C.g9,8);
+  }
+}
+
+function drawSouth(){
+  drawBase();const wH=~~(H*.65);
+  // BOOKSHELF
+  const sx=W/2-176,sy=8,sw=274,sh=wH-14;
+  px(sx,sy,sw,sh,C.g2);
+  px(sx,sy,10,sh,C.g3);px(sx+sw-10,sy,10,sh,C.g3);
+  px(sx,sy,sw,10,C.g3);px(sx,sy+sh-8,sw,8,C.g3);
+  // UV reveal
+  if(S.uvOn&&S.f.hasUV){px(sx,sy,sw,sh,'#003a0055');pt('CODE=45',sx+60,sy+~~(sh/2),C.g9,16);pt('SEE JOURNAL',sx+46,sy+~~(sh/2)+26,C.g7,7);}
+  const bk=[C.g3,C.g4,C.g5,C.g2,C.g5,C.g4,C.g3];
+  for(let r=0;r<4;r++){
+    const ry=sy+10+r*48;px(sx+6,ry+40,sw-12,5,C.g4);
+    let bx=sx+14;
+    for(let b=0;b<10;b++){
+      const bw=18+(b%3)*4,bh=24+(b%4)*5;if(bx+bw>sx+sw-12)break;
+      const sym=r===1&&(b===2||b===5||b===8);
+      const gone=sym&&S.f.booksPulled;
+      if(!gone){px(bx,ry+40-bh,bw,bh,sym?C.g8:bk[(r*10+b)%bk.length]);px(bx+2,ry+40-bh+4,2,bh-8,C.g2);
+        if(sym){const s=['*','^','#'];pt(s[~~(b/3)],bx+4,ry+28,C.g9,7);}}
+      bx+=bw+2;
+    }
+  }
+  // compartment
+  if(S.f.booksPulled){
+    px(sx+72,sy+48,110,46,C.bk);px(sx+74,sy+50,106,42,C.g1);
+    if(!S.f.hasSmallKey){px(sx+88,sy+58,14,28,C.g7);px(sx+90,sy+58,10,6,C.g8);}
+    if(!S.f.mapRead){px(sx+122,sy+60,32,22,C.g5);pt('MAP',sx+126,sy+76,C.g9,7);}
+    pt('SECRET',sx+80,sy+104,C.g6,6);
+  }
+  // SAFE
+  const sfx=W/2+104,sfy=36;
+  px(sfx,sfy,106,110,C.g2);px(sfx+4,sfy+4,98,102,C.g1);
+  px(sfx,sfy,106,8,C.g4);px(sfx,sfy,8,110,C.g4);px(sfx+98,sfy,8,110,C.g4);px(sfx,sfy+102,106,8,C.g4);
+  // keypad on safe
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)px(sfx+12+c*26,sfy+18+r*20,22,16,S.f.safeOpen?C.g9:C.g3);
+  if(S.f.safeOpen){
+    px(sfx+8,sfy+62,90,42,C.bk);
+    if(!S.f.hasKeycard)pt('CARD',sfx+10,sfy+88,C.g9,7);
+    if(!S.f.hasWireCuts)pt('CUTS',sfx+56,sfy+88,C.g7,7);
+    pt('OPEN!',sfx+26,sfy+108,C.g9,8);
+  } else pt('SAFE',sfx+30,sfy+118,C.g4,8);
+  // wall scratch "19"
+  px(sx-46,sy+60,36,32,C.g1);pt('19',sx-42,sy+86,S.f.southNum?C.g9:C.g4,14);
+  // FLOOR GRATE
+  const grx=W/2-38,gry=wH+2;
+  if(!S.f.grateOpen){px(grx,gry,76,22,C.g3);for(let i=0;i<4;i++){px(grx+4,gry+4+i*4,68,3,C.g4);}for(let i=0;i<4;i++)px(grx+4+i*18,gry+4,4,18,C.g5);}
+  else{px(grx,gry,76,22,C.bk);pt('OPEN',grx+8,gry+16,C.g6,7);}
+}
+
+function drawWest(){
+  drawBase();const wH=~~(H*.65);
+  // WORKBENCH
+  const wx=16,wy=~~(H*.46);
+  px(wx,wy,214,14,C.g4);px(wx,wy+2,214,4,C.g5);
+  px(wx+6,wy+14,22,wH-wy-14,C.g3);px(wx+186,wy+14,22,wH-wy-14,C.g3);
+  for(let i=0;i<5;i++)px(wx+20+i*34,wy-14,16,14,C.g3);
+  // fuse note
+  if(!S.f.fuseNoteRead){px(wx+10,wy-36,46,28,C.g3);px(wx+12,wy-34,42,24,C.g5);pt('NOTE',wx+14,wy-16,C.g9,7);}
+  // locked drawer
+  px(wx+46,wy+16,114,40,C.g2);px(wx+48,wy+18,110,36,C.g1);
+  if(!S.f.drawerOpen){px(wx+96,wy+30,16,14,C.g4);px(wx+98,wy+26,12,6,C.g4);px(wx+100,wy+22,8,8,C.bk);}
+  else{px(wx+50,wy+20,108,32,C.bk);if(!S.f.hasFuseAItem)pt('FA',wx+60,wy+40,C.g9,7);if(!S.f.hasFuseBItem)pt('FB',wx+96,wy+40,C.g7,7);pt('OPEN',wx+130,wy+40,C.g6,7);}
+  // LOCKED BOX
+  const bx=wx+10,by=wy-70;
+  px(bx,by,80,56,S.f.boxOpen?C.g3:C.g2);px(bx+4,by+4,72,48,C.g1);
+  if(!S.f.boxOpen){
+    px(bx+24,by+18,32,22,C.g3);px(bx+34,by+10,12,12,C.g3);px(bx+36,by+8,8,8,C.bk);
+    pt('?',bx+10,by+42,C.g4,7);
+  } else {
+    px(bx+4,by+4,72,48,C.bk);
+    if(!S.f.hasFuseCItem)pt('FC!',bx+22,by+34,C.g9,9);
+    else pt('EMPTY',bx+6,by+34,C.g4,7);
+  }
+  pt('LOCK BOX',bx,by+62,C.g4,6);
+  // MIRROR
+  const mx=W/2-62,my=14,mw=122,mh=154;
+  px(mx,my,mw,mh,C.g3);px(mx+7,my+7,mw-14,mh-14,C.g1);
+  for(let i=0;i<3;i++){px(mx+i*2,my+i*2,mw-i*4,4,C.g4);px(mx+i*2,my+mh-i*4-4,mw-i*4,4,C.g4);}
+  px(mx+9,my+9,mw-18,mh-18,'#031003');
+  px(mx+42,my+26,26,24,C.g3);px(mx+38,my+50,36,54,C.g2);
+  px(mx+34,my+104,14,32,C.g2);px(mx+56,my+104,14,32,C.g2);
+  ctx.strokeStyle=C.g6;ctx.lineWidth=1;ctx.setLineDash([2,3]);
+  ctx.beginPath();ctx.moveTo(mx+~~(mw*.66),my+5);ctx.lineTo(mx+mw-2,my+~~(mh*.42));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx+~~(mw*.66),my+5);ctx.lineTo(mx+~~(mw*.32),my+~~(mh*.32));ctx.stroke();
+  ctx.setLineDash([]);
+  if(S.uvOn&&S.f.hasUV){px(mx+9,my+9,mw-18,mh-18,'#003300aa');pt('CHIP:',mx+12,my+70,C.g9,7);pt('S.GRATE',mx+12,my+90,C.g7,7);}
+  // wall scratch "19" (confirms south)
+  px(W-52,120,42,30,C.g1);pt('19',W-48,144,S.f.westNum?C.g9:C.g3,13);
+  // VENT
+  const vx=W/2+96,vy=~~(H*.33);
+  px(vx,vy,96,76,C.g1);px(vx+3,vy+3,90,70,C.g2);
+  for(let i=0;i<7;i++)px(vx+6,vy+6+i*9,84,6,C.g3);
+  for(let j=0;j<4;j++)px(vx+6+j*22,vy+6,6,62,C.g4);
+  pt('VENT',vx+30,vy+84,C.g4,8);
+}
+
+// ── MAIN RENDER ────────────────────────────────────────
+function render(){
+  const k=['north','east','south','west'][S.facing];
+  document.getElementById('facing').textContent=`[ ${WALLS[S.facing]} ]`;
+  ctx.clearRect(0,0,W,H);
+  if(k==='north')drawNorth();
+  else if(k==='east')drawEast();
+  else if(k==='south')drawSouth();
+  else drawWest();
+  const opts=SCENES[k].opts();
+  cursor=Math.min(cursor,Math.max(0,opts.length-1));
+  renderMenu(opts);
+}
+
+// ── KEYBOARD HANDLER ───────────────────────────────────
+document.addEventListener('keydown',e=>{
+  // In input mode: only handle Enter (submit) and Escape (cancel)
+  if(inputMode){
+    if(e.key==='Enter'){e.preventDefault();submitInput();}
+    if(e.key==='Escape'){e.preventDefault();closeInput();narr("INPUT CANCELLED.");render();}
+    return; // let all other keys through to the input field
+  }
+
+  if(S.done)return;
+  const k=e.key;
+
+  // Rotation — no cooldown for rotation (doesn't affect puzzle state)
+  if(k==='a'||k==='A'){cursor=0;go(S.facing-1);return;}
+  if(k==='d'||k==='D'){cursor=0;go(S.facing+1);return;}
+  if(k==='1'){cursor=0;go(0);return;}
+  if(k==='2'){cursor=0;go(1);return;}
+  if(k==='3'){cursor=0;go(2);return;}
+  if(k==='4'){cursor=0;go(3);return;}
+
+  // Menu navigation — COOLDOWN ENFORCED
+  if(k==='w'||k==='W'){e.preventDefault();moveCursor(-1);}
+  if(k==='s'||k==='S'){e.preventDefault();moveCursor(1);}
+  if(k===' '){e.preventDefault();if(canAct())selectCurrent();}
+});
+
+// ── TIMER ──────────────────────────────────────────────
+const timerEl=document.getElementById('timer');
+setInterval(()=>{
+  if(!S.timerOn)return;
+  S.timerLeft--;
+  if(S.timerLeft<=0){
+    S.timerOn=false;S.done=true;
+    narr("TIME'S UP. THE ROOM WINS. TRY AGAIN.");
+    renderMenu([{label:'Play Again',fn:()=>location.reload()}]);
+    return;
+  }
+  const m=~~(S.timerLeft/60),sec=S.timerLeft%60;
+  timerEl.textContent=`${m}:${String(sec).padStart(2,'0')}`;
+  if(S.timerLeft<=60)timerEl.className='warn';
+  else if(S.timerLeft<=180)timerEl.style.color='var(--g6)';
+},1000);
+
+// ── BOOT ───────────────────────────────────────────────
 render();
-narrate("You wake in a dark room. Cold air. A bulb flickers. Find a way out.");
+narr("YOU WAKE ON A COLD FLOOR. A VAULT DOOR IS SEALED NORTH. POWER IS OUT. FOUR MATH PUZZLES STAND BETWEEN YOU AND FREEDOM. USE W/S TO NAVIGATE, SPACE TO ACT.");
 </script>
 </body>
 </html>
